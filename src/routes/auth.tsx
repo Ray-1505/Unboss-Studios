@@ -44,7 +44,6 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [busy, setBusy] = useState(false);
-  const [sent, setSent] = useState(false);
 
   const { data: roster } = useQuery({
     queryKey: ["roster"],
