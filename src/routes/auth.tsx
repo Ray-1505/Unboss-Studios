@@ -104,13 +104,7 @@ function AuthPage() {
           <div className="rule-gold mt-6 w-full" />
         </div>
 
-        {sent ? (
-          <p className="mt-8 text-center text-sm text-muted-foreground">
-            We sent a confirmation link to <span className="text-primary">{email}</span>. Confirm
-            it, then sign in.
-          </p>
-        ) : (
-          <form onSubmit={handleSubmit} className="mt-8 space-y-4">
+        <form onSubmit={handleSubmit} className="mt-8 space-y-4">
             {mode === "signup" && (
               <div className="space-y-2">
                 <Label>Your name</Label>
