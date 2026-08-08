@@ -71,7 +71,7 @@ function AuthPage() {
           toast.error("Choose your name from the team list.");
           return;
         }
-        const { data, error } = await supabase.auth.signUp({
+        const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -80,10 +80,7 @@ function AuthPage() {
           },
         });
         if (error) throw error;
-        if (!data.session) {
-          setSent(true);
-          toast.success("Check your email to confirm your account.");
-        }
+        toast.success("Welcome to the studio");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
