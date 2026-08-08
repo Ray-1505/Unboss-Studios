@@ -44,7 +44,6 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [busy, setBusy] = useState(false);
-  const [sent, setSent] = useState(false);
 
   const { data: roster } = useQuery({
     queryKey: ["roster"],
@@ -71,7 +70,7 @@ function AuthPage() {
           toast.error("Choose your name from the team list.");
           return;
         }
-        const { data, error } = await supabase.auth.signUp({
+        const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -80,10 +79,7 @@ function AuthPage() {
           },
         });
         if (error) throw error;
-        if (!data.session) {
-          setSent(true);
-          toast.success("Check your email to confirm your account.");
-        }
+        toast.success("Welcome to the studio");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -107,13 +103,7 @@ function AuthPage() {
           <div className="rule-gold mt-6 w-full" />
         </div>
 
-        {sent ? (
-          <p className="mt-8 text-center text-sm text-muted-foreground">
-            We sent a confirmation link to <span className="text-primary">{email}</span>. Confirm
-            it, then sign in.
-          </p>
-        ) : (
-          <form onSubmit={handleSubmit} className="mt-8 space-y-4">
+        <form onSubmit={handleSubmit} className="mt-8 space-y-4">
             {mode === "signup" && (
               <div className="space-y-2">
                 <Label>Your name</Label>
@@ -157,14 +147,12 @@ function AuthPage() {
             <Button type="submit" className="w-full" disabled={busy}>
               {busy ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}
             </Button>
-          </form>
-        )}
+        </form>
 
         <button
           type="button"
           onClick={() => {
             setMode(mode === "signin" ? "signup" : "signin");
-            setSent(false);
           }}
           className="mt-6 w-full text-center text-xs uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:text-primary"
         >

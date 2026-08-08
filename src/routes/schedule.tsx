@@ -92,7 +92,9 @@ function SchedulePage() {
     queryKey: ["profiles"],
     enabled,
     queryFn: async () => {
-      const { data, error } = await supabase.from("profiles").select("id, full_name");
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name, is_active");
       if (error) throw error;
       return data;
     },
@@ -134,13 +136,20 @@ function SchedulePage() {
 
   const myName = user ? nameOf.get(user.id) ?? "You" : "";
 
+  const activeIds = useMemo(
+    () => new Set((profiles ?? []).filter((p) => p.is_active).map((p) => p.id)),
+    [profiles],
+  );
+
   const availByDate = useMemo(() => {
     const map = new Map<string, string[]>();
-    (availability ?? []).forEach((a) => {
-      map.set(a.available_date, [...(map.get(a.available_date) ?? []), a.user_id]);
-    });
+    (availability ?? [])
+      .filter((a) => activeIds.has(a.user_id))
+      .forEach((a) => {
+        map.set(a.available_date, [...(map.get(a.available_date) ?? []), a.user_id]);
+      });
     return map;
-  }, [availability]);
+  }, [availability, activeIds]);
 
   const jobsByDate = useMemo(() => {
     const map = new Map<string, typeof jobs>();
@@ -149,6 +158,16 @@ function SchedulePage() {
     });
     return map;
   }, [jobs]);
+
+  function dayStatus(date: string) {
+    const avail = availByDate.get(date) ?? [];
+    const dayJobs = jobsByDate.get(date) ?? [];
+    if (dayJobs.length === 0) return "open" as const;
+    const booked = new Set((dayJobs ?? []).map((j) => j.shooter_id));
+    const free = avail.filter((id) => !booked.has(id));
+    return free.length > 0 ? ("partial" as const) : ("full" as const);
+  }
+
 
   const toggleAvailability = useMutation({
     mutationFn: async ({ date, on }: { date: string; on: boolean }) => {
@@ -232,6 +251,8 @@ function SchedulePage() {
 
   const selectedAvailable = availByDate.get(selected) ?? [];
   const selectedJobs = jobsByDate.get(selected) ?? [];
+  const bookedOnSelected = new Set((selectedJobs ?? []).map((j) => j.shooter_id));
+  const selectedFree = selectedAvailable.filter((id) => !bookedOnSelected.has(id));
   const iAmAvailable = selectedAvailable.includes(user.id);
 
   return (
@@ -248,6 +269,9 @@ function SchedulePage() {
         </Link>
         <div className="flex items-center gap-3">
           <span className="text-sm text-muted-foreground">{myName}</span>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/admin">Admin</Link>
+          </Button>
           <Button variant="outline" size="sm" onClick={signOut}>
             Sign out
           </Button>
@@ -285,23 +309,21 @@ function SchedulePage() {
               const avail = availByDate.get(date) ?? [];
               const dayJobs = jobsByDate.get(date) ?? [];
               const isSelected = date === selected;
-              const mine = user ? avail.includes(user.id) : false;
+              const status = dayStatus(date);
+              const tone =
+                status === "open" ? "day-open" : status === "partial" ? "day-partial" : "day-full";
               return (
                 <button
                   key={date}
                   type="button"
                   onClick={() => setSelected(date)}
-                  className={`flex aspect-square flex-col items-center justify-center rounded-md border text-sm transition-colors ${
-                    isSelected
-                      ? "border-primary bg-primary/15 text-primary"
-                      : mine
-                        ? "border-primary/50 bg-secondary/60"
-                        : "border-border/40 bg-secondary/30 hover:border-primary/60"
+                  className={`flex aspect-square flex-col items-center justify-center rounded-md border text-sm transition-transform hover:-translate-y-0.5 ${tone} ${
+                    isSelected ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""
                   }`}
                 >
                   <span className="font-display">{i + 1}</span>
-                  <span className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground">
-                    {avail.length > 0 && <span className="text-primary">{avail.length}●</span>}
+                  <span className="mt-1 flex items-center gap-1 text-[10px] opacity-80">
+                    {avail.length > 0 && <span>{avail.length}●</span>}
                     {dayJobs.length > 0 && <span>{dayJobs.length}▲</span>}
                   </span>
                 </button>
@@ -309,10 +331,21 @@ function SchedulePage() {
             })}
           </div>
 
-          <p className="mt-5 text-[11px] text-muted-foreground">
-            <span className="text-primary">●</span> available shooters &nbsp;·&nbsp; ▲ booked jobs
+          <p className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] text-muted-foreground">
+            <span className="flex items-center gap-2">
+              <span className="day-open inline-block h-3 w-3 rounded-sm border" /> No active jobs
+            </span>
+            <span className="flex items-center gap-2">
+              <span className="day-partial inline-block h-3 w-3 rounded-sm border" /> Jobs, shooters
+              still free
+            </span>
+            <span className="flex items-center gap-2">
+              <span className="day-full inline-block h-3 w-3 rounded-sm border" /> Fully booked
+            </span>
+            <span>● available &nbsp;·&nbsp; ▲ jobs</span>
           </p>
         </section>
+
 
         <section className="surface-royal rounded-lg p-5">
           <h2 className="text-base text-gilded">{prettyDate(selected)}</h2>
@@ -361,10 +394,12 @@ function SchedulePage() {
             Available slots
           </h3>
           <ul className="mt-3 space-y-2">
-            {selectedAvailable.length === 0 && (
-              <li className="text-sm text-muted-foreground">Nobody marked available.</li>
+            {selectedFree.length === 0 && (
+              <li className="text-sm text-muted-foreground">
+                No free shooters left for this date.
+              </li>
             )}
-            {selectedAvailable.map((id) => (
+            {selectedFree.map((id) => (
               <li
                 key={id}
                 className="flex items-center justify-between rounded-md border border-border/50 bg-secondary/40 p-3"

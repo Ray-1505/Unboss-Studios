@@ -76,18 +76,21 @@ export type Database = {
           created_at: string
           full_name: string
           id: string
+          is_active: boolean
           team_member_id: string | null
         }
         Insert: {
           created_at?: string
           full_name?: string
           id: string
+          is_active?: boolean
           team_member_id?: string | null
         }
         Update: {
           created_at?: string
           full_name?: string
           id?: string
+          is_active?: boolean
           team_member_id?: string | null
         }
         Relationships: [
@@ -147,6 +150,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_admin: { Args: never; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

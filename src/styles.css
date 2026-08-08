@@ -159,3 +159,30 @@
   );
 }
 
+
+@utility day-open {
+  border-color: oklch(0.62 0.14 250 / 60%);
+  background-image: linear-gradient(
+    160deg,
+    oklch(0.34 0.09 252),
+    oklch(0.26 0.07 255)
+  );
+  color: oklch(0.93 0.03 250);
+}
+
+@utility day-partial {
+  border-color: oklch(0.79 0.115 84 / 70%);
+  background-image: var(--gradient-gold);
+  color: oklch(0.2 0.05 259);
+}
+
+@utility day-full {
+  border-color: oklch(0.62 0.16 25 / 75%);
+  background-image: linear-gradient(
+    160deg,
+    oklch(0.58 0.17 27),
+    oklch(0.36 0.12 25) 55%,
+    oklch(0.5 0.15 26)
+  );
+  color: oklch(0.96 0.03 40);
+}
