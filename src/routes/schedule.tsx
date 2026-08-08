@@ -251,6 +251,8 @@ function SchedulePage() {
 
   const selectedAvailable = availByDate.get(selected) ?? [];
   const selectedJobs = jobsByDate.get(selected) ?? [];
+  const bookedOnSelected = new Set((selectedJobs ?? []).map((j) => j.shooter_id));
+  const selectedFree = selectedAvailable.filter((id) => !bookedOnSelected.has(id));
   const iAmAvailable = selectedAvailable.includes(user.id);
 
   return (
