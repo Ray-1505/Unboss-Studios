@@ -148,14 +148,12 @@ function AuthPage() {
             <Button type="submit" className="w-full" disabled={busy}>
               {busy ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}
             </Button>
-          </form>
-        )}
+        </form>
 
         <button
           type="button"
           onClick={() => {
             setMode(mode === "signin" ? "signup" : "signin");
-            setSent(false);
           }}
           className="mt-6 w-full text-center text-xs uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:text-primary"
         >
