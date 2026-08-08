@@ -394,10 +394,12 @@ function SchedulePage() {
             Available slots
           </h3>
           <ul className="mt-3 space-y-2">
-            {selectedAvailable.length === 0 && (
-              <li className="text-sm text-muted-foreground">Nobody marked available.</li>
+            {selectedFree.length === 0 && (
+              <li className="text-sm text-muted-foreground">
+                No free shooters left for this date.
+              </li>
             )}
-            {selectedAvailable.map((id) => (
+            {selectedFree.map((id) => (
               <li
                 key={id}
                 className="flex items-center justify-between rounded-md border border-border/50 bg-secondary/40 p-3"
