@@ -92,7 +92,9 @@ function SchedulePage() {
     queryKey: ["profiles"],
     enabled,
     queryFn: async () => {
-      const { data, error } = await supabase.from("profiles").select("id, full_name");
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name, is_active");
       if (error) throw error;
       return data;
     },
