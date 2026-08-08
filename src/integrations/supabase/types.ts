@@ -14,16 +14,149 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      availability: {
+        Row: {
+          available_date: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          available_date: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          available_date?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      jobs: {
+        Row: {
+          client_name: string
+          created_at: string
+          created_by: string
+          id: string
+          job_date: string
+          location: string
+          notes: string
+          shooter_id: string
+          start_time: string
+        }
+        Insert: {
+          client_name?: string
+          created_at?: string
+          created_by: string
+          id?: string
+          job_date: string
+          location?: string
+          notes?: string
+          shooter_id: string
+          start_time?: string
+        }
+        Update: {
+          client_name?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          job_date?: string
+          location?: string
+          notes?: string
+          shooter_id?: string
+          start_time?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          full_name: string
+          id: string
+          team_member_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          full_name?: string
+          id: string
+          team_member_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          full_name?: string
+          id?: string
+          team_member_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_members: {
+        Row: {
+          created_at: string
+          full_name: string
+          gender_label: string
+          id: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          full_name: string
+          gender_label?: string
+          id?: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          full_name?: string
+          gender_label?: string
+          id?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "shooter"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +283,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "shooter"],
+    },
   },
 } as const
