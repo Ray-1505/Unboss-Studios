@@ -136,13 +136,20 @@ function SchedulePage() {
 
   const myName = user ? nameOf.get(user.id) ?? "You" : "";
 
+  const activeIds = useMemo(
+    () => new Set((profiles ?? []).filter((p) => p.is_active).map((p) => p.id)),
+    [profiles],
+  );
+
   const availByDate = useMemo(() => {
     const map = new Map<string, string[]>();
-    (availability ?? []).forEach((a) => {
-      map.set(a.available_date, [...(map.get(a.available_date) ?? []), a.user_id]);
-    });
+    (availability ?? [])
+      .filter((a) => activeIds.has(a.user_id))
+      .forEach((a) => {
+        map.set(a.available_date, [...(map.get(a.available_date) ?? []), a.user_id]);
+      });
     return map;
-  }, [availability]);
+  }, [availability, activeIds]);
 
   const jobsByDate = useMemo(() => {
     const map = new Map<string, typeof jobs>();
@@ -151,6 +158,16 @@ function SchedulePage() {
     });
     return map;
   }, [jobs]);
+
+  function dayStatus(date: string) {
+    const avail = availByDate.get(date) ?? [];
+    const dayJobs = jobsByDate.get(date) ?? [];
+    if (dayJobs.length === 0) return "open" as const;
+    const booked = new Set((dayJobs ?? []).map((j) => j.shooter_id));
+    const free = avail.filter((id) => !booked.has(id));
+    return free.length > 0 ? ("partial" as const) : ("full" as const);
+  }
+
 
   const toggleAvailability = useMutation({
     mutationFn: async ({ date, on }: { date: string; on: boolean }) => {
