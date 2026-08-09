@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Crest } from "@/components/Crest";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/PasswordInput";
 import { Label } from "@/components/ui/label";
 import {
   Select,
