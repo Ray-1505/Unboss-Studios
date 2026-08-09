@@ -398,11 +398,13 @@ function SchedulePage() {
           </div>
 
           <h3 className="mt-6 text-xs uppercase tracking-[0.25em] text-primary">
-            Shooters on duty
+            {isAdmin ? "Shooters on duty" : "My jobs"}
           </h3>
           <ul className="mt-3 space-y-2">
             {selectedJobs.length === 0 && (
-              <li className="text-sm text-muted-foreground">No jobs booked yet.</li>
+              <li className="text-sm text-muted-foreground">
+                {isAdmin ? "No jobs booked yet." : "You have no jobs on this date."}
+              </li>
             )}
             {selectedJobs.map((j) => (
               <li key={j.id} className="rounded-md border border-primary/30 bg-primary/10 p-3">
@@ -414,42 +416,75 @@ function SchedulePage() {
                   {[j.client_name, j.start_time].filter(Boolean).join(" · ") || "No details"}
                 </p>
                 {j.notes && <p className="mt-1 text-[11px] text-muted-foreground">{j.notes}</p>}
-                <button
-                  type="button"
-                  onClick={() => removeJob.mutate(j.id)}
-                  className="mt-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground hover:text-destructive"
-                >
-                  Remove
-                </button>
+                {isAdmin && (
+                  <div className="mt-2 flex gap-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setForm({
+                          client: j.client_name,
+                          location: j.location,
+                          time: j.start_time,
+                          notes: j.notes,
+                        });
+                        setBookingFor({
+                          id: j.shooter_id,
+                          name: nameOf.get(j.shooter_id) ?? "Team member",
+                          jobId: j.id,
+                        });
+                      }}
+                      className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground hover:text-primary"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (window.confirm("Remove this booking?")) removeJob.mutate(j.id);
+                      }}
+                      className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground hover:text-destructive"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
               </li>
             ))}
           </ul>
 
-          <h3 className="mt-6 text-xs uppercase tracking-[0.25em] text-primary">
-            Available slots
-          </h3>
-          <ul className="mt-3 space-y-2">
-            {selectedFree.length === 0 && (
-              <li className="text-sm text-muted-foreground">
-                No free shooters left for this date.
-              </li>
-            )}
-            {selectedFree.map((id) => (
-              <li
-                key={id}
-                className="flex items-center justify-between rounded-md border border-border/50 bg-secondary/40 p-3"
-              >
-                <span className="text-sm">{nameOf.get(id) ?? "Team member"}</span>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setBookingFor({ id, name: nameOf.get(id) ?? "Team member" })}
-                >
-                  Slot job
-                </Button>
-              </li>
-            ))}
-          </ul>
+          {isAdmin && (
+            <>
+              <h3 className="mt-6 text-xs uppercase tracking-[0.25em] text-primary">
+                Available slots
+              </h3>
+              <ul className="mt-3 space-y-2">
+                {selectedFree.length === 0 && (
+                  <li className="text-sm text-muted-foreground">
+                    No free shooters left for this date.
+                  </li>
+                )}
+                {selectedFree.map((id) => (
+                  <li
+                    key={id}
+                    className="flex items-center justify-between rounded-md border border-border/50 bg-secondary/40 p-3"
+                  >
+                    <span className="text-sm">{nameOf.get(id) ?? "Team member"}</span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setForm({ client: "", location: "", time: "", notes: "" });
+                        setBookingFor({ id, name: nameOf.get(id) ?? "Team member" });
+                      }}
+                    >
+                      Slot job
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+
         </section>
       </div>
 
