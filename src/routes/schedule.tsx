@@ -536,8 +536,10 @@ function SchedulePage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="font-display">
-              Slot {bookingFor?.name} — {prettyDate(selected)}
+              {bookingFor?.jobId ? "Edit job" : "Slot"} {bookingFor?.name} —{" "}
+              {prettyDate(selected)}
             </DialogTitle>
+
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
