@@ -345,8 +345,16 @@ function SchedulePage() {
               const dayJobs = jobsByDate.get(date) ?? [];
               const isSelected = date === selected;
               const status = dayStatus(date);
-              const tone =
-                status === "open" ? "day-open" : status === "partial" ? "day-partial" : "day-full";
+              const tone = !isAdmin
+                ? dayJobs.length > 0
+                  ? "day-partial"
+                  : "day-open"
+                : status === "open"
+                  ? "day-open"
+                  : status === "partial"
+                    ? "day-partial"
+                    : "day-full";
+
               return (
                 <button
                   key={date}
