@@ -78,6 +78,7 @@ export type Database = {
           id: string
           is_active: boolean
           team_member_id: string | null
+          username: string
         }
         Insert: {
           created_at?: string
@@ -85,6 +86,7 @@ export type Database = {
           id: string
           is_active?: boolean
           team_member_id?: string | null
+          username: string
         }
         Update: {
           created_at?: string
@@ -92,6 +94,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           team_member_id?: string | null
+          username?: string
         }
         Relationships: [
           {
