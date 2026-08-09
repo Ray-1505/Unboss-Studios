@@ -105,6 +105,23 @@ function SchedulePage() {
     },
   });
 
+  const { data: myRoles } = useQuery({
+    queryKey: ["my-roles", user?.id],
+    enabled,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user!.id);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const isAdmin = (myRoles ?? []).some((r) => r.role === "admin");
+
+
+
   const { data: availability } = useQuery({
     queryKey: ["availability", monthStart],
     enabled,
