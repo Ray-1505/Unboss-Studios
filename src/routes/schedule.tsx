@@ -74,8 +74,13 @@ function SchedulePage() {
   const [selected, setSelected] = useState<string>(
     iso(today.getFullYear(), today.getMonth(), today.getDate()),
   );
-  const [bookingFor, setBookingFor] = useState<{ id: string; name: string } | null>(null);
+  const [bookingFor, setBookingFor] = useState<{
+    id: string;
+    name: string;
+    jobId?: string;
+  } | null>(null);
   const [form, setForm] = useState({ client: "", location: "", time: "", notes: "" });
+
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth", replace: true });
@@ -99,6 +104,23 @@ function SchedulePage() {
       return data;
     },
   });
+
+  const { data: myRoles } = useQuery({
+    queryKey: ["my-roles", user?.id],
+    enabled,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user!.id);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const isAdmin = (myRoles ?? []).some((r) => r.role === "admin");
+
+
 
   const { data: availability } = useQuery({
     queryKey: ["availability", monthStart],
@@ -193,28 +215,41 @@ function SchedulePage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const createJob = useMutation({
+  const saveJob = useMutation({
     mutationFn: async () => {
       if (!user || !bookingFor) throw new Error("Not ready");
-      const { error } = await supabase.from("jobs").insert({
-        job_date: selected,
-        shooter_id: bookingFor.id,
+      const payload = {
         client_name: form.client,
         location: form.location,
         start_time: form.time,
         notes: form.notes,
+      };
+      if (bookingFor.jobId) {
+        const { error } = await supabase
+          .from("jobs")
+          .update(payload)
+          .eq("id", bookingFor.jobId);
+        if (error) throw error;
+        return;
+      }
+      const { error } = await supabase.from("jobs").insert({
+        ...payload,
+        job_date: selected,
+        shooter_id: bookingFor.id,
         created_by: user.id,
       });
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_d, _v) => {
+      const wasEdit = Boolean(bookingFor?.jobId);
       queryClient.invalidateQueries({ queryKey: ["jobs"] });
       setBookingFor(null);
       setForm({ client: "", location: "", time: "", notes: "" });
-      toast.success("Slot booked");
+      toast.success(wasEdit ? "Booking updated" : "Slot booked");
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
   const removeJob = useMutation({
     mutationFn: async (id: string) => {
@@ -310,8 +345,16 @@ function SchedulePage() {
               const dayJobs = jobsByDate.get(date) ?? [];
               const isSelected = date === selected;
               const status = dayStatus(date);
-              const tone =
-                status === "open" ? "day-open" : status === "partial" ? "day-partial" : "day-full";
+              const tone = !isAdmin
+                ? dayJobs.length > 0
+                  ? "day-partial"
+                  : "day-open"
+                : status === "open"
+                  ? "day-open"
+                  : status === "partial"
+                    ? "day-partial"
+                    : "day-full";
+
               return (
                 <button
                   key={date}
@@ -332,18 +375,29 @@ function SchedulePage() {
           </div>
 
           <p className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] text-muted-foreground">
-            <span className="flex items-center gap-2">
-              <span className="day-open inline-block h-3 w-3 rounded-sm border" /> No active jobs
-            </span>
-            <span className="flex items-center gap-2">
-              <span className="day-partial inline-block h-3 w-3 rounded-sm border" /> Jobs, shooters
-              still free
-            </span>
-            <span className="flex items-center gap-2">
-              <span className="day-full inline-block h-3 w-3 rounded-sm border" /> Fully booked
-            </span>
+            {isAdmin ? (
+              <>
+                <span className="flex items-center gap-2">
+                  <span className="day-open inline-block h-3 w-3 rounded-sm border" /> No active
+                  jobs
+                </span>
+                <span className="flex items-center gap-2">
+                  <span className="day-partial inline-block h-3 w-3 rounded-sm border" /> Jobs,
+                  shooters still free
+                </span>
+                <span className="flex items-center gap-2">
+                  <span className="day-full inline-block h-3 w-3 rounded-sm border" /> Fully booked
+                </span>
+              </>
+            ) : (
+              <span className="flex items-center gap-2">
+                <span className="day-partial inline-block h-3 w-3 rounded-sm border" /> Days you
+                have a job
+              </span>
+            )}
             <span>● available &nbsp;·&nbsp; ▲ jobs</span>
           </p>
+
         </section>
 
 
@@ -363,11 +417,13 @@ function SchedulePage() {
           </div>
 
           <h3 className="mt-6 text-xs uppercase tracking-[0.25em] text-primary">
-            Shooters on duty
+            {isAdmin ? "Shooters on duty" : "My jobs"}
           </h3>
           <ul className="mt-3 space-y-2">
             {selectedJobs.length === 0 && (
-              <li className="text-sm text-muted-foreground">No jobs booked yet.</li>
+              <li className="text-sm text-muted-foreground">
+                {isAdmin ? "No jobs booked yet." : "You have no jobs on this date."}
+              </li>
             )}
             {selectedJobs.map((j) => (
               <li key={j.id} className="rounded-md border border-primary/30 bg-primary/10 p-3">
@@ -379,42 +435,75 @@ function SchedulePage() {
                   {[j.client_name, j.start_time].filter(Boolean).join(" · ") || "No details"}
                 </p>
                 {j.notes && <p className="mt-1 text-[11px] text-muted-foreground">{j.notes}</p>}
-                <button
-                  type="button"
-                  onClick={() => removeJob.mutate(j.id)}
-                  className="mt-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground hover:text-destructive"
-                >
-                  Remove
-                </button>
+                {isAdmin && (
+                  <div className="mt-2 flex gap-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setForm({
+                          client: j.client_name,
+                          location: j.location,
+                          time: j.start_time,
+                          notes: j.notes,
+                        });
+                        setBookingFor({
+                          id: j.shooter_id,
+                          name: nameOf.get(j.shooter_id) ?? "Team member",
+                          jobId: j.id,
+                        });
+                      }}
+                      className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground hover:text-primary"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (window.confirm("Remove this booking?")) removeJob.mutate(j.id);
+                      }}
+                      className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground hover:text-destructive"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
               </li>
             ))}
           </ul>
 
-          <h3 className="mt-6 text-xs uppercase tracking-[0.25em] text-primary">
-            Available slots
-          </h3>
-          <ul className="mt-3 space-y-2">
-            {selectedFree.length === 0 && (
-              <li className="text-sm text-muted-foreground">
-                No free shooters left for this date.
-              </li>
-            )}
-            {selectedFree.map((id) => (
-              <li
-                key={id}
-                className="flex items-center justify-between rounded-md border border-border/50 bg-secondary/40 p-3"
-              >
-                <span className="text-sm">{nameOf.get(id) ?? "Team member"}</span>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setBookingFor({ id, name: nameOf.get(id) ?? "Team member" })}
-                >
-                  Slot job
-                </Button>
-              </li>
-            ))}
-          </ul>
+          {isAdmin && (
+            <>
+              <h3 className="mt-6 text-xs uppercase tracking-[0.25em] text-primary">
+                Available slots
+              </h3>
+              <ul className="mt-3 space-y-2">
+                {selectedFree.length === 0 && (
+                  <li className="text-sm text-muted-foreground">
+                    No free shooters left for this date.
+                  </li>
+                )}
+                {selectedFree.map((id) => (
+                  <li
+                    key={id}
+                    className="flex items-center justify-between rounded-md border border-border/50 bg-secondary/40 p-3"
+                  >
+                    <span className="text-sm">{nameOf.get(id) ?? "Team member"}</span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setForm({ client: "", location: "", time: "", notes: "" });
+                        setBookingFor({ id, name: nameOf.get(id) ?? "Team member" });
+                      }}
+                    >
+                      Slot job
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+
         </section>
       </div>
 
@@ -441,16 +530,21 @@ function SchedulePage() {
                     ? dates.map((d) => d.slice(8) + "/" + d.slice(5, 7)).join(", ")
                     : "—"}
                 </p>
-                <p className="mt-3 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                  Total jobs ({myJobs.length})
-                </p>
-                <p className="mt-1 text-sm">
-                  {myJobs.length
-                    ? myJobs
-                        .map((j) => j.job_date.slice(8) + "/" + j.job_date.slice(5, 7))
-                        .join(", ")
-                    : "—"}
-                </p>
+                {(isAdmin || p.id === user.id) && (
+                  <>
+                    <p className="mt-3 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                      Total jobs ({myJobs.length})
+                    </p>
+                    <p className="mt-1 text-sm">
+                      {myJobs.length
+                        ? myJobs
+                            .map((j) => j.job_date.slice(8) + "/" + j.job_date.slice(5, 7))
+                            .join(", ")
+                        : "—"}
+                    </p>
+                  </>
+                )}
+
               </article>
             );
           })}
@@ -461,8 +555,10 @@ function SchedulePage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="font-display">
-              Slot {bookingFor?.name} — {prettyDate(selected)}
+              {bookingFor?.jobId ? "Edit job" : "Slot"} {bookingFor?.name} —{" "}
+              {prettyDate(selected)}
             </DialogTitle>
+
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -503,10 +599,15 @@ function SchedulePage() {
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={() => createJob.mutate()} disabled={createJob.isPending}>
-              {createJob.isPending ? "Booking…" : "Confirm booking"}
+            <Button onClick={() => saveJob.mutate()} disabled={saveJob.isPending}>
+              {saveJob.isPending
+                ? "Saving…"
+                : bookingFor?.jobId
+                  ? "Save changes"
+                  : "Confirm booking"}
             </Button>
           </DialogFooter>
+
         </DialogContent>
       </Dialog>
     </main>

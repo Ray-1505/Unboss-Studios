@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/PasswordInput";
 import { Label } from "@/components/ui/label";
+import { usernameToEmail, validateUsername } from "@/lib/username";
 import {
   Select,
   SelectContent,
@@ -25,7 +26,7 @@ export const Route = createFileRoute("/auth")({
       {
         name: "description",
         content:
-          "Sign in or register as an Unboss Studio team member to mark your available dates and manage bookings.",
+          "Sign in with your username or register as an Unboss Studio team member to mark your available dates and manage bookings.",
       },
       { property: "og:title", content: "Sign in | Unboss Studio Schedule" },
       {
@@ -41,7 +42,7 @@ function AuthPage() {
   const navigate = useNavigate();
   const { session, loading } = useAuth();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [busy, setBusy] = useState(false);
@@ -64,8 +65,14 @@ function AuthPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const check = validateUsername(username);
+    if (!check.ok) {
+      toast.error(check.error);
+      return;
+    }
     setBusy(true);
     try {
+      const email = usernameToEmail(check.username);
       if (mode === "signup") {
         if (!fullName) {
           toast.error("Choose your name from the team list.");
@@ -74,16 +81,23 @@ function AuthPage() {
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: {
-            emailRedirectTo: window.location.origin + "/schedule",
-            data: { full_name: fullName },
-          },
+          options: { data: { full_name: fullName, username: check.username } },
         });
-        if (error) throw error;
+        if (error) {
+          if (/already registered|already been registered|User already/i.test(error.message)) {
+            throw new Error("That username is already taken.");
+          }
+          throw error;
+        }
         toast.success("Welcome to the studio");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
+        if (error) {
+          if (/invalid login credentials/i.test(error.message)) {
+            throw new Error("Wrong username or password.");
+          }
+          throw error;
+        }
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Something went wrong.");
@@ -105,48 +119,51 @@ function AuthPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-4">
-            {mode === "signup" && (
-              <div className="space-y-2">
-                <Label>Your name</Label>
-                <Select value={fullName} onValueChange={setFullName}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select from the team list" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(roster ?? []).map((m) => (
-                      <SelectItem key={m.id} value={m.full_name}>
-                        {m.full_name} ({m.gender_label})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+          {mode === "signup" && (
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@unboss.studio"
-              />
+              <Label>Your name</Label>
+              <Select value={fullName} onValueChange={setFullName}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select from the team list" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(roster ?? []).map((m) => (
+                    <SelectItem key={m.id} value={m.full_name}>
+                      {m.full_name}
+                      {m.gender_label ? ` (${m.gender_label})` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <PasswordInput
-                id="password"
-                required
-                minLength={6}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-              />
-            </div>
-            <Button type="submit" className="w-full" disabled={busy}>
-              {busy ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}
-            </Button>
+          )}
+          <div className="space-y-2">
+            <Label htmlFor="username">Username</Label>
+            <Input
+              id="username"
+              autoCapitalize="none"
+              autoCorrect="off"
+              autoComplete="username"
+              required
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="amirul"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="password">Password</Label>
+            <PasswordInput
+              id="password"
+              required
+              minLength={6}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+            />
+          </div>
+          <Button type="submit" className="w-full" disabled={busy}>
+            {busy ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}
+          </Button>
         </form>
 
         <button
@@ -158,6 +175,10 @@ function AuthPage() {
         >
           {mode === "signin" ? "New here? Register" : "Already registered? Sign in"}
         </button>
+
+        <p className="mt-4 text-center text-[11px] text-muted-foreground">
+          Forgot your password? Ask a studio admin to reset it for you.
+        </p>
 
         <div className="mt-6 text-center">
           <Link to="/" className="text-xs text-muted-foreground hover:text-primary">
