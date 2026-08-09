@@ -1,12 +1,25 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Crest } from "@/components/Crest";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { PasswordInput } from "@/components/PasswordInput";
+import { adminResetPassword, adminSetUsername } from "@/lib/admin.functions";
+import { validateUsername } from "@/lib/username";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -23,12 +36,12 @@ export const Route = createFileRoute("/admin")({
       {
         name: "description",
         content:
-          "Manage Unboss Studio shooters: assign admin or shooter roles and activate or deactivate team members.",
+          "Manage Unboss Studio shooters: roster names, usernames, passwords, roles and activation status.",
       },
       { property: "og:title", content: "Admin Console | Unboss Studio Schedule" },
       {
         property: "og:description",
-        content: "Assign roles and activation status for the Unboss Studio team.",
+        content: "Manage roster names, usernames, passwords and roles for the Unboss Studio team.",
       },
     ],
   }),
@@ -41,6 +54,17 @@ function AdminPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, loading } = useAuth();
+  const setUsernameFn = useServerFn(adminSetUsername);
+  const resetPasswordFn = useServerFn(adminResetPassword);
+
+  const [newName, setNewName] = useState("");
+  const [newGender, setNewGender] = useState("");
+  const [usernameDialog, setUsernameDialog] = useState<{ id: string; current: string } | null>(
+    null,
+  );
+  const [usernameDraft, setUsernameDraft] = useState("");
+  const [passwordDialog, setPasswordDialog] = useState<{ id: string; name: string } | null>(null);
+  const [passwordDraft, setPasswordDraft] = useState("");
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth", replace: true });
@@ -54,7 +78,7 @@ function AdminPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, full_name, is_active, created_at")
+        .select("id, full_name, username, is_active, created_at")
         .order("full_name");
       if (error) throw error;
       return data;
@@ -71,6 +95,19 @@ function AdminPage() {
     },
   });
 
+  const { data: roster } = useQuery({
+    queryKey: ["roster"],
+    enabled,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("team_members")
+        .select("id, full_name, gender_label, sort_order")
+        .order("sort_order");
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const roleOf = new Map<string, Role>();
   (roles ?? []).forEach((r) => {
     if (r.role === "admin") roleOf.set(r.user_id, "admin");
@@ -79,6 +116,7 @@ function AdminPage() {
 
   const adminExists = (roles ?? []).some((r) => r.role === "admin");
   const isAdmin = user ? roleOf.get(user.id) === "admin" : false;
+  const registeredNames = new Set((profiles ?? []).map((p) => p.full_name));
 
   const claimAdmin = useMutation({
     mutationFn: async () => {
@@ -119,6 +157,69 @@ function AdminPage() {
       queryClient.invalidateQueries({ queryKey: ["admin-profiles"] });
       queryClient.invalidateQueries({ queryKey: ["profiles"] });
       toast.success("Activation updated");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const addRosterName = useMutation({
+    mutationFn: async () => {
+      const name = newName.trim();
+      if (!name) throw new Error("Enter a name.");
+      const nextOrder = ((roster ?? []).at(-1)?.sort_order ?? 0) + 1;
+      const { error } = await supabase.from("team_members").insert({
+        full_name: name,
+        gender_label: newGender.trim(),
+        sort_order: nextOrder,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setNewName("");
+      setNewGender("");
+      queryClient.invalidateQueries({ queryKey: ["roster"] });
+      toast.success("Name added to the roster");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const removeRosterName = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("team_members").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["roster"] });
+      toast.success("Name removed");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const changeUsername = useMutation({
+    mutationFn: async () => {
+      if (!usernameDialog) throw new Error("Not ready");
+      const check = validateUsername(usernameDraft);
+      if (!check.ok) throw new Error(check.error);
+      await setUsernameFn({ data: { userId: usernameDialog.id, username: check.username } });
+    },
+    onSuccess: () => {
+      setUsernameDialog(null);
+      setUsernameDraft("");
+      queryClient.invalidateQueries({ queryKey: ["admin-profiles"] });
+      toast.success("Username updated");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const resetPassword = useMutation({
+    mutationFn: async () => {
+      if (!passwordDialog) throw new Error("Not ready");
+      if (passwordDraft.length < 6) throw new Error("Password must be at least 6 characters.");
+      await resetPasswordFn({ data: { userId: passwordDialog.id, password: passwordDraft } });
+    },
+    onSuccess: () => {
+      setPasswordDialog(null);
+      setPasswordDraft("");
+      toast.success("Password reset — share it with the member");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -174,67 +275,215 @@ function AdminPage() {
           )}
         </section>
       ) : (
-        <section className="surface-royal rounded-lg p-5">
-          <h1 className="font-display text-lg text-gilded">Shooters &amp; roles</h1>
-          <p className="mt-2 text-xs text-muted-foreground">
-            Deactivated members stay in the records but are no longer offered as available
-            shooters.
-          </p>
-          <div className="rule-gold my-5" />
+        <>
+          <section className="surface-royal rounded-lg p-5">
+            <h1 className="font-display text-lg text-gilded">Studio roster</h1>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Add a name here, then the person registers with their own username and password.
+            </p>
+            <div className="rule-gold my-5" />
 
-          <ul className="space-y-3">
-            {(profiles ?? []).length === 0 && (
-              <li className="text-sm text-muted-foreground">No registered members yet.</li>
-            )}
-            {(profiles ?? []).map((p) => {
-              const role = roleOf.get(p.id) ?? "shooter";
-              return (
-                <li
-                  key={p.id}
-                  className="flex flex-wrap items-center justify-between gap-4 rounded-md border border-border/50 bg-secondary/40 p-4"
-                >
-                  <div>
-                    <p className="font-display text-sm text-primary">
-                      {p.full_name || "Team member"}
-                      {p.id === user.id ? " (you)" : ""}
-                    </p>
-                    <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                      {p.is_active ? "Active" : "Deactivated"}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <Select
-                      value={role}
-                      onValueChange={(next) =>
-                        setRole.mutate({ userId: p.id, role: next as Role })
-                      }
-                    >
-                      <SelectTrigger className="w-36">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="shooter">Shooter</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                        Active
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="min-w-48 flex-1 space-y-2">
+                <Label htmlFor="new-name">Full name</Label>
+                <Input
+                  id="new-name"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="Nurul Hamira"
+                />
+              </div>
+              <div className="w-28 space-y-2">
+                <Label htmlFor="new-gender">Label</Label>
+                <Input
+                  id="new-gender"
+                  value={newGender}
+                  onChange={(e) => setNewGender(e.target.value)}
+                  placeholder="L / M"
+                />
+              </div>
+              <Button onClick={() => addRosterName.mutate()} disabled={addRosterName.isPending}>
+                {addRosterName.isPending ? "Adding…" : "Add name"}
+              </Button>
+            </div>
+
+            <ul className="mt-5 space-y-2">
+              {(roster ?? []).map((m) => {
+                const registered = registeredNames.has(m.full_name);
+                return (
+                  <li
+                    key={m.id}
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border/50 bg-secondary/40 px-4 py-3"
+                  >
+                    <span className="text-sm">
+                      {m.full_name}
+                      {m.gender_label ? (
+                        <span className="text-muted-foreground"> ({m.gender_label})</span>
+                      ) : null}
+                    </span>
+                    {registered ? (
+                      <span className="text-[10px] uppercase tracking-[0.2em] text-primary/80">
+                        Registered
                       </span>
-                      <Switch
-                        checked={p.is_active}
-                        onCheckedChange={(active) =>
-                          setActive.mutate({ userId: p.id, active })
-                        }
-                      />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => removeRosterName.mutate(m.id)}
+                        className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground hover:text-destructive"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+
+          <section className="surface-royal mt-6 rounded-lg p-5">
+            <h2 className="font-display text-lg text-gilded">Shooters &amp; roles</h2>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Deactivated members stay in the records but are no longer offered as available
+              shooters.
+            </p>
+            <div className="rule-gold my-5" />
+
+            <ul className="space-y-3">
+              {(profiles ?? []).length === 0 && (
+                <li className="text-sm text-muted-foreground">No registered members yet.</li>
+              )}
+              {(profiles ?? []).map((p) => {
+                const role = roleOf.get(p.id) ?? "shooter";
+                return (
+                  <li
+                    key={p.id}
+                    className="flex flex-wrap items-center justify-between gap-4 rounded-md border border-border/50 bg-secondary/40 p-4"
+                  >
+                    <div>
+                      <p className="font-display text-sm text-primary">
+                        {p.full_name || "Team member"}
+                        {p.id === user.id ? " (you)" : ""}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">@{p.username}</p>
+                      <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                        {p.is_active ? "Active" : "Deactivated"}
+                      </p>
+                      <div className="mt-2 flex gap-4">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setUsernameDialog({ id: p.id, current: p.username });
+                            setUsernameDraft(p.username);
+                          }}
+                          className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground hover:text-primary"
+                        >
+                          Change username
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPasswordDialog({ id: p.id, name: p.full_name || p.username });
+                            setPasswordDraft("");
+                          }}
+                          className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground hover:text-primary"
+                        >
+                          Reset password
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
+                    <div className="flex items-center gap-4">
+                      <Select
+                        value={role}
+                        onValueChange={(next) =>
+                          setRole.mutate({ userId: p.id, role: next as Role })
+                        }
+                      >
+                        <SelectTrigger className="w-36">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="admin">Admin</SelectItem>
+                          <SelectItem value="shooter">Shooter</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                          Active
+                        </span>
+                        <Switch
+                          checked={p.is_active}
+                          onCheckedChange={(active) =>
+                            setActive.mutate({ userId: p.id, active })
+                          }
+                        />
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        </>
       )}
+
+      <Dialog
+        open={Boolean(usernameDialog)}
+        onOpenChange={(open) => !open && setUsernameDialog(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-display">Change username</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="username-draft">New username</Label>
+            <Input
+              id="username-draft"
+              autoCapitalize="none"
+              value={usernameDraft}
+              onChange={(e) => setUsernameDraft(e.target.value)}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              3–24 characters: letters, numbers, dots, dashes or underscores.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => changeUsername.mutate()} disabled={changeUsername.isPending}>
+              {changeUsername.isPending ? "Saving…" : "Save username"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(passwordDialog)}
+        onOpenChange={(open) => !open && setPasswordDialog(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-display">
+              Reset password — {passwordDialog?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="password-draft">New password</Label>
+            <PasswordInput
+              id="password-draft"
+              minLength={6}
+              value={passwordDraft}
+              onChange={(e) => setPasswordDraft(e.target.value)}
+              placeholder="••••••••"
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Share this password with the member so they can sign in and change it later.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => resetPassword.mutate()} disabled={resetPassword.isPending}>
+              {resetPassword.isPending ? "Resetting…" : "Reset password"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }
