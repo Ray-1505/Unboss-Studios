@@ -511,16 +511,21 @@ function SchedulePage() {
                     ? dates.map((d) => d.slice(8) + "/" + d.slice(5, 7)).join(", ")
                     : "—"}
                 </p>
-                <p className="mt-3 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                  Total jobs ({myJobs.length})
-                </p>
-                <p className="mt-1 text-sm">
-                  {myJobs.length
-                    ? myJobs
-                        .map((j) => j.job_date.slice(8) + "/" + j.job_date.slice(5, 7))
-                        .join(", ")
-                    : "—"}
-                </p>
+                {(isAdmin || p.id === user.id) && (
+                  <>
+                    <p className="mt-3 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                      Total jobs ({myJobs.length})
+                    </p>
+                    <p className="mt-1 text-sm">
+                      {myJobs.length
+                        ? myJobs
+                            .map((j) => j.job_date.slice(8) + "/" + j.job_date.slice(5, 7))
+                            .join(", ")
+                        : "—"}
+                    </p>
+                  </>
+                )}
+
               </article>
             );
           })}
