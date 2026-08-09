@@ -74,8 +74,13 @@ function SchedulePage() {
   const [selected, setSelected] = useState<string>(
     iso(today.getFullYear(), today.getMonth(), today.getDate()),
   );
-  const [bookingFor, setBookingFor] = useState<{ id: string; name: string } | null>(null);
+  const [bookingFor, setBookingFor] = useState<{
+    id: string;
+    name: string;
+    jobId?: string;
+  } | null>(null);
   const [form, setForm] = useState({ client: "", location: "", time: "", notes: "" });
+
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth", replace: true });
