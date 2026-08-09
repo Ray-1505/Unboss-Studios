@@ -375,18 +375,29 @@ function SchedulePage() {
           </div>
 
           <p className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] text-muted-foreground">
-            <span className="flex items-center gap-2">
-              <span className="day-open inline-block h-3 w-3 rounded-sm border" /> No active jobs
-            </span>
-            <span className="flex items-center gap-2">
-              <span className="day-partial inline-block h-3 w-3 rounded-sm border" /> Jobs, shooters
-              still free
-            </span>
-            <span className="flex items-center gap-2">
-              <span className="day-full inline-block h-3 w-3 rounded-sm border" /> Fully booked
-            </span>
+            {isAdmin ? (
+              <>
+                <span className="flex items-center gap-2">
+                  <span className="day-open inline-block h-3 w-3 rounded-sm border" /> No active
+                  jobs
+                </span>
+                <span className="flex items-center gap-2">
+                  <span className="day-partial inline-block h-3 w-3 rounded-sm border" /> Jobs,
+                  shooters still free
+                </span>
+                <span className="flex items-center gap-2">
+                  <span className="day-full inline-block h-3 w-3 rounded-sm border" /> Fully booked
+                </span>
+              </>
+            ) : (
+              <span className="flex items-center gap-2">
+                <span className="day-partial inline-block h-3 w-3 rounded-sm border" /> Days you
+                have a job
+              </span>
+            )}
             <span>● available &nbsp;·&nbsp; ▲ jobs</span>
           </p>
+
         </section>
 
 
