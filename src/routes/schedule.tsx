@@ -580,10 +580,15 @@ function SchedulePage() {
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={() => createJob.mutate()} disabled={createJob.isPending}>
-              {createJob.isPending ? "Booking…" : "Confirm booking"}
+            <Button onClick={() => saveJob.mutate()} disabled={saveJob.isPending}>
+              {saveJob.isPending
+                ? "Saving…"
+                : bookingFor?.jobId
+                  ? "Save changes"
+                  : "Confirm booking"}
             </Button>
           </DialogFooter>
+
         </DialogContent>
       </Dialog>
     </main>
