@@ -215,28 +215,41 @@ function SchedulePage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const createJob = useMutation({
+  const saveJob = useMutation({
     mutationFn: async () => {
       if (!user || !bookingFor) throw new Error("Not ready");
-      const { error } = await supabase.from("jobs").insert({
-        job_date: selected,
-        shooter_id: bookingFor.id,
+      const payload = {
         client_name: form.client,
         location: form.location,
         start_time: form.time,
         notes: form.notes,
+      };
+      if (bookingFor.jobId) {
+        const { error } = await supabase
+          .from("jobs")
+          .update(payload)
+          .eq("id", bookingFor.jobId);
+        if (error) throw error;
+        return;
+      }
+      const { error } = await supabase.from("jobs").insert({
+        ...payload,
+        job_date: selected,
+        shooter_id: bookingFor.id,
         created_by: user.id,
       });
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_d, _v) => {
+      const wasEdit = Boolean(bookingFor?.jobId);
       queryClient.invalidateQueries({ queryKey: ["jobs"] });
       setBookingFor(null);
       setForm({ client: "", location: "", time: "", notes: "" });
-      toast.success("Slot booked");
+      toast.success(wasEdit ? "Booking updated" : "Slot booked");
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
   const removeJob = useMutation({
     mutationFn: async (id: string) => {
