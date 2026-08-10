@@ -81,7 +81,8 @@ function AdminPage() {
         .select("id, full_name, username, is_active, created_at")
         .order("full_name");
       if (error) throw error;
-      return data;
+      return data.filter((p) => p.username !== "admin_unboss");
+
     },
   });
 
