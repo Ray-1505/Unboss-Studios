@@ -99,9 +99,10 @@ function SchedulePage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, full_name, is_active");
+        .select("id, full_name, is_active, username");
       if (error) throw error;
-      return data;
+      return data.filter((p) => p.username !== "admin_unboss");
+
     },
   });
 
