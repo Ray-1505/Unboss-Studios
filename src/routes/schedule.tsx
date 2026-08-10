@@ -501,8 +501,38 @@ function SchedulePage() {
                   </li>
                 ))}
               </ul>
+
+              <h3 className="mt-6 text-xs uppercase tracking-[0.25em] text-primary">
+                Assign any shooter
+              </h3>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Admin override — assign a job even if the shooter hasn't marked this date.
+              </p>
+              <ul className="mt-3 space-y-2">
+                {(profiles ?? [])
+                  .filter((p) => !bookedOnSelected.has(p.id) && !selectedFree.includes(p.id))
+                  .map((p) => (
+                    <li
+                      key={p.id}
+                      className="flex items-center justify-between rounded-md border border-border/40 p-3"
+                    >
+                      <span className="text-sm text-muted-foreground">{p.full_name}</span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setForm({ client: "", location: "", time: "", notes: "" });
+                          setBookingFor({ id: p.id, name: p.full_name });
+                        }}
+                      >
+                        Assign
+                      </Button>
+                    </li>
+                  ))}
+              </ul>
             </>
           )}
+
 
         </section>
       </div>
