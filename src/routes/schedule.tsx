@@ -399,7 +399,98 @@ function SchedulePage() {
             <span>● available &nbsp;·&nbsp; ▲ jobs</span>
           </p>
 
+          <div className="mt-6 rounded-md border border-border/50 bg-secondary/30 p-4">
+            <h3 className="text-xs uppercase tracking-[0.25em] text-primary">
+              Bulk availability — {MONTHS[month]} {year}
+            </h3>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Pick the weekdays you work, then mark the whole month at once.
+            </p>
+
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {DAY_LABELS.map((label, index) => {
+                const on = pickedWeekdays.includes(index);
+                return (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() =>
+                      setPickedWeekdays((prev) =>
+                        prev.includes(index)
+                          ? prev.filter((d) => d !== index)
+                          : [...prev, index].sort(),
+                      )
+                    }
+                    className={`rounded-md border px-2.5 py-1 text-[11px] uppercase tracking-[0.15em] transition-colors ${
+                      on
+                        ? "border-primary bg-primary/20 text-primary"
+                        : "border-border/60 text-muted-foreground hover:text-primary"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-3 flex flex-wrap gap-3 text-[11px] uppercase tracking-[0.15em]">
+              <button
+                type="button"
+                onClick={() => setPickedWeekdays([0, 1, 2, 3, 4, 5, 6])}
+                className="text-muted-foreground hover:text-primary"
+              >
+                Every day
+              </button>
+              <button
+                type="button"
+                onClick={() => setPickedWeekdays([1, 2, 3, 4, 5])}
+                className="text-muted-foreground hover:text-primary"
+              >
+                Weekdays
+              </button>
+              <button
+                type="button"
+                onClick={() => setPickedWeekdays([0, 6])}
+                className="text-muted-foreground hover:text-primary"
+              >
+                Weekends
+              </button>
+              <button
+                type="button"
+                onClick={() => setPickedWeekdays([])}
+                className="text-muted-foreground hover:text-primary"
+              >
+                None
+              </button>
+            </div>
+
+            <label className="mt-4 flex items-center gap-3 text-[11px] text-muted-foreground">
+              <Switch checked={fromTodayOnly} onCheckedChange={setFromTodayOnly} />
+              Skip dates already past
+            </label>
+
+            <div className="mt-4 flex flex-wrap gap-3">
+              <Button
+                size="sm"
+                onClick={() => bulkAvailability.mutate({ on: true })}
+                disabled={bulkAvailability.isPending}
+              >
+                Mark {bulkTargets.length} date{bulkTargets.length === 1 ? "" : "s"} available
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => bulkAvailability.mutate({ on: false })}
+                disabled={bulkAvailability.isPending}
+              >
+                Clear selection
+              </Button>
+            </div>
+          </div>
+
         </section>
+
+
 
 
         <section className="surface-royal rounded-lg p-5">
