@@ -220,6 +220,54 @@ function SchedulePage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const todayIso = iso(today.getFullYear(), today.getMonth(), today.getDate());
+
+  const bulkTargets = useMemo(() => {
+    if (pickedWeekdays.length === 0) return [] as string[];
+    const dates: string[] = [];
+    for (let d = 1; d <= daysInMonth; d += 1) {
+      const date = iso(year, month, d);
+      if (!pickedWeekdays.includes(new Date(year, month, d).getDay())) continue;
+      if (fromTodayOnly && date < todayIso) continue;
+      dates.push(date);
+    }
+    return dates;
+  }, [pickedWeekdays, daysInMonth, year, month, fromTodayOnly, todayIso]);
+
+  const bulkAvailability = useMutation({
+    mutationFn: async ({ on }: { on: boolean }) => {
+      if (!user) throw new Error("Not signed in");
+      if (bulkTargets.length === 0) throw new Error("Pick at least one weekday first.");
+      if (on) {
+        const mine = new Set(
+          (availability ?? []).filter((a) => a.user_id === user.id).map((a) => a.available_date),
+        );
+        const rows = bulkTargets
+          .filter((date) => !mine.has(date))
+          .map((date) => ({ user_id: user.id, available_date: date }));
+        if (rows.length === 0) return 0;
+        const { error } = await supabase.from("availability").insert(rows);
+        if (error) throw error;
+        return rows.length;
+      }
+      const { error } = await supabase
+        .from("availability")
+        .delete()
+        .eq("user_id", user.id)
+        .in("available_date", bulkTargets);
+      if (error) throw error;
+      return bulkTargets.length;
+    },
+    onSuccess: (count, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["availability"] });
+      toast.success(
+        vars.on ? `${count} date(s) marked available` : "Availability cleared for those dates",
+      );
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+
   const saveJob = useMutation({
     mutationFn: async () => {
       if (!user || !bookingFor) throw new Error("Not ready");
