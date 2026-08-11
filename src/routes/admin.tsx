@@ -58,7 +58,6 @@ function AdminPage() {
   const resetPasswordFn = useServerFn(adminResetPassword);
 
   const [newName, setNewName] = useState("");
-  const [newGender, setNewGender] = useState("");
   const [usernameDialog, setUsernameDialog] = useState<{ id: string; current: string } | null>(
     null,
   );
@@ -175,7 +174,6 @@ function AdminPage() {
     },
     onSuccess: () => {
       setNewName("");
-      setNewGender("");
       queryClient.invalidateQueries({ queryKey: ["roster"] });
       toast.success("Name added to the roster");
     },
