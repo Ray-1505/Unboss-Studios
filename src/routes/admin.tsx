@@ -58,7 +58,6 @@ function AdminPage() {
   const resetPasswordFn = useServerFn(adminResetPassword);
 
   const [newName, setNewName] = useState("");
-  const [newGender, setNewGender] = useState("");
   const [usernameDialog, setUsernameDialog] = useState<{ id: string; current: string } | null>(
     null,
   );
@@ -96,13 +95,23 @@ function AdminPage() {
     },
   });
 
+  const { data: masterAdmins } = useQuery({
+    queryKey: ["master-admins"],
+    enabled,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("master_admins").select("user_id");
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const { data: roster } = useQuery({
     queryKey: ["roster"],
     enabled,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("team_members")
-        .select("id, full_name, gender_label, sort_order")
+        .select("id, full_name, sort_order")
         .order("sort_order");
       if (error) throw error;
       return data;
@@ -117,6 +126,8 @@ function AdminPage() {
 
   const adminExists = (roles ?? []).some((r) => r.role === "admin");
   const isAdmin = user ? roleOf.get(user.id) === "admin" : false;
+  const masterIds = new Set((masterAdmins ?? []).map((m) => m.user_id));
+  const isMasterAdmin = user ? masterIds.has(user.id) : false;
   const registeredNames = new Set((profiles ?? []).map((p) => p.full_name));
 
   const claimAdmin = useMutation({
@@ -169,14 +180,12 @@ function AdminPage() {
       const nextOrder = ((roster ?? []).at(-1)?.sort_order ?? 0) + 1;
       const { error } = await supabase.from("team_members").insert({
         full_name: name,
-        gender_label: newGender.trim(),
         sort_order: nextOrder,
       });
       if (error) throw error;
     },
     onSuccess: () => {
       setNewName("");
-      setNewGender("");
       queryClient.invalidateQueries({ queryKey: ["roster"] });
       toast.success("Name added to the roster");
     },
@@ -245,9 +254,14 @@ function AdminPage() {
             <span className="block font-display text-lg">Admin Console</span>
           </span>
         </Link>
-        <Button asChild variant="outline" size="sm">
-          <Link to="/schedule">Master calendar</Link>
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button asChild variant="outline" size="sm">
+            <Link to="/state-team">State Team</Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/schedule">Master calendar</Link>
+          </Button>
+        </div>
       </header>
 
       <div className="rule-gold my-8" />
@@ -294,15 +308,6 @@ function AdminPage() {
                   placeholder="Nurul Hamira"
                 />
               </div>
-              <div className="w-28 space-y-2">
-                <Label htmlFor="new-gender">Label</Label>
-                <Input
-                  id="new-gender"
-                  value={newGender}
-                  onChange={(e) => setNewGender(e.target.value)}
-                  placeholder="L / M"
-                />
-              </div>
               <Button onClick={() => addRosterName.mutate()} disabled={addRosterName.isPending}>
                 {addRosterName.isPending ? "Adding…" : "Add name"}
               </Button>
@@ -316,12 +321,7 @@ function AdminPage() {
                     key={m.id}
                     className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border/50 bg-secondary/40 px-4 py-3"
                   >
-                    <span className="text-sm">
-                      {m.full_name}
-                      {m.gender_label ? (
-                        <span className="text-muted-foreground"> ({m.gender_label})</span>
-                      ) : null}
-                    </span>
+                    <span className="text-sm">{m.full_name}</span>
                     {registered ? (
                       <span className="text-[10px] uppercase tracking-[0.2em] text-primary/80">
                         Registered
@@ -346,6 +346,9 @@ function AdminPage() {
             <p className="mt-2 text-xs text-muted-foreground">
               Deactivated members stay in the records but are no longer offered as available
               shooters.
+              {isMasterAdmin
+                ? " As master admin, only you can promote or demote admins."
+                : " Only the master admin can promote or demote admins."}
             </p>
             <div className="rule-gold my-5" />
 
@@ -355,6 +358,7 @@ function AdminPage() {
               )}
               {(profiles ?? []).map((p) => {
                 const role = roleOf.get(p.id) ?? "shooter";
+                const isMaster = masterIds.has(p.id);
                 return (
                   <li
                     key={p.id}
@@ -364,12 +368,15 @@ function AdminPage() {
                       <p className="font-display text-sm text-primary">
                         {p.full_name || "Team member"}
                         {p.id === user.id ? " (you)" : ""}
+                        {isMaster ? " ♛" : ""}
                       </p>
                       <p className="text-[11px] text-muted-foreground">@{p.username}</p>
                       <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
                         {p.is_active ? "Active" : "Deactivated"}
                       </p>
                       <div className="mt-2 flex gap-4">
+                        {(!isMaster || isMasterAdmin) && (
+                        <>
                         <button
                           type="button"
                           onClick={() => {
@@ -390,29 +397,38 @@ function AdminPage() {
                         >
                           Reset password
                         </button>
+                        </>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
-                      <Select
-                        value={role}
-                        onValueChange={(next) =>
-                          setRole.mutate({ userId: p.id, role: next as Role })
-                        }
-                      >
-                        <SelectTrigger className="w-36">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="admin">Admin</SelectItem>
-                          <SelectItem value="shooter">Shooter</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      {isMasterAdmin && !isMaster ? (
+                        <Select
+                          value={role}
+                          onValueChange={(next) =>
+                            setRole.mutate({ userId: p.id, role: next as Role })
+                          }
+                        >
+                          <SelectTrigger className="w-36">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="admin">Admin</SelectItem>
+                            <SelectItem value="shooter">Shooter</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <span className="w-36 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                          {isMaster ? "Master admin" : role}
+                        </span>
+                      )}
                       <div className="flex items-center gap-2">
                         <span className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
                           Active
                         </span>
                         <Switch
                           checked={p.is_active}
+                          disabled={isMaster}
                           onCheckedChange={(active) =>
                             setActive.mutate({ userId: p.id, active })
                           }

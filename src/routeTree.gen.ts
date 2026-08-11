@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ScheduleRouteImport } from './routes/schedule'
+import { Route as StateTeamRouteImport } from './routes/state-team'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -34,18 +35,25 @@ const ScheduleRoute = ScheduleRouteImport.update({
   path: '/schedule',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StateTeamRoute = StateTeamRouteImport.update({
+  id: '/state-team',
+  path: '/state-team',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/schedule': typeof ScheduleRoute
+  '/state-team': typeof StateTeamRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/schedule': typeof ScheduleRoute
+  '/state-team': typeof StateTeamRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,13 +61,14 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/schedule': typeof ScheduleRoute
+  '/state-team': typeof StateTeamRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/auth' | '/schedule'
+  fullPaths: '/' | '/admin' | '/auth' | '/schedule' | '/state-team'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/auth' | '/schedule'
-  id: '__root__' | '/' | '/admin' | '/auth' | '/schedule'
+  to: '/' | '/admin' | '/auth' | '/schedule' | '/state-team'
+  id: '__root__' | '/' | '/admin' | '/auth' | '/schedule' | '/state-team'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -67,6 +76,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   AuthRoute: typeof AuthRoute
   ScheduleRoute: typeof ScheduleRoute
+  StateTeamRoute: typeof StateTeamRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -99,6 +109,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ScheduleRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/state-team': {
+      id: '/state-team'
+      path: '/state-team'
+      fullPath: '/state-team'
+      preLoaderRoute: typeof StateTeamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -107,6 +124,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   AuthRoute: AuthRoute,
   ScheduleRoute: ScheduleRoute,
+  StateTeamRoute: StateTeamRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

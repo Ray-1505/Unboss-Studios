@@ -52,7 +52,7 @@ function AuthPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("team_members")
-        .select("id, full_name, gender_label")
+        .select("id, full_name")
         .order("sort_order");
       if (error) throw error;
       return data;
@@ -130,7 +130,6 @@ function AuthPage() {
                   {(roster ?? []).map((m) => (
                     <SelectItem key={m.id} value={m.full_name}>
                       {m.full_name}
-                      {m.gender_label ? ` (${m.gender_label})` : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>

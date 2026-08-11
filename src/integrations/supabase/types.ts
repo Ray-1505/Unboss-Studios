@@ -71,6 +71,21 @@ export type Database = {
         }
         Relationships: []
       }
+      master_admins: {
+        Row: {
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -106,25 +121,52 @@ export type Database = {
           },
         ]
       }
+      state_leaders: {
+        Row: {
+          created_at: string
+          id: string
+          leader_name: string
+          phone: string
+          state_code: string
+          state_name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          leader_name?: string
+          phone?: string
+          state_code: string
+          state_name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          leader_name?: string
+          phone?: string
+          state_code?: string
+          state_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       team_members: {
         Row: {
           created_at: string
           full_name: string
-          gender_label: string
           id: string
           sort_order: number
         }
         Insert: {
           created_at?: string
           full_name: string
-          gender_label?: string
           id?: string
           sort_order?: number
         }
         Update: {
           created_at?: string
           full_name?: string
-          gender_label?: string
           id?: string
           sort_order?: number
         }
@@ -161,6 +203,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_master_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "shooter"

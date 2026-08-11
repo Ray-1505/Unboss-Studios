@@ -80,6 +80,10 @@ function SchedulePage() {
     jobId?: string;
   } | null>(null);
   const [form, setForm] = useState({ client: "", location: "", time: "", notes: "" });
+  const [pickedWeekdays, setPickedWeekdays] = useState<number[]>([]);
+  const [fromTodayOnly, setFromTodayOnly] = useState(true);
+
+
 
 
   useEffect(() => {
@@ -216,6 +220,54 @@ function SchedulePage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const todayIso = iso(today.getFullYear(), today.getMonth(), today.getDate());
+
+  const bulkTargets = useMemo(() => {
+    if (pickedWeekdays.length === 0) return [] as string[];
+    const dates: string[] = [];
+    for (let d = 1; d <= daysInMonth; d += 1) {
+      const date = iso(year, month, d);
+      if (!pickedWeekdays.includes(new Date(year, month, d).getDay())) continue;
+      if (fromTodayOnly && date < todayIso) continue;
+      dates.push(date);
+    }
+    return dates;
+  }, [pickedWeekdays, daysInMonth, year, month, fromTodayOnly, todayIso]);
+
+  const bulkAvailability = useMutation({
+    mutationFn: async ({ on }: { on: boolean }) => {
+      if (!user) throw new Error("Not signed in");
+      if (bulkTargets.length === 0) throw new Error("Pick at least one weekday first.");
+      if (on) {
+        const mine = new Set(
+          (availability ?? []).filter((a) => a.user_id === user.id).map((a) => a.available_date),
+        );
+        const rows = bulkTargets
+          .filter((date) => !mine.has(date))
+          .map((date) => ({ user_id: user.id, available_date: date }));
+        if (rows.length === 0) return 0;
+        const { error } = await supabase.from("availability").insert(rows);
+        if (error) throw error;
+        return rows.length;
+      }
+      const { error } = await supabase
+        .from("availability")
+        .delete()
+        .eq("user_id", user.id)
+        .in("available_date", bulkTargets);
+      if (error) throw error;
+      return bulkTargets.length;
+    },
+    onSuccess: (count, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["availability"] });
+      toast.success(
+        vars.on ? `${count} date(s) marked available` : "Availability cleared for those dates",
+      );
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+
   const saveJob = useMutation({
     mutationFn: async () => {
       if (!user || !bookingFor) throw new Error("Not ready");
@@ -306,8 +358,13 @@ function SchedulePage() {
         <div className="flex items-center gap-3">
           <span className="text-sm text-muted-foreground">{myName}</span>
           <Button asChild variant="outline" size="sm">
-            <Link to="/admin">Admin</Link>
+            <Link to="/state-team">State Team</Link>
           </Button>
+          {isAdmin && (
+            <Button asChild variant="outline" size="sm">
+              <Link to="/admin">Admin</Link>
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={signOut}>
             Sign out
           </Button>
@@ -399,7 +456,98 @@ function SchedulePage() {
             <span>● available &nbsp;·&nbsp; ▲ jobs</span>
           </p>
 
+          <div className="mt-6 rounded-md border border-border/50 bg-secondary/30 p-4">
+            <h3 className="text-xs uppercase tracking-[0.25em] text-primary">
+              Bulk availability — {MONTHS[month]} {year}
+            </h3>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Pick the weekdays you work, then mark the whole month at once.
+            </p>
+
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {DAY_LABELS.map((label, index) => {
+                const on = pickedWeekdays.includes(index);
+                return (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() =>
+                      setPickedWeekdays((prev) =>
+                        prev.includes(index)
+                          ? prev.filter((d) => d !== index)
+                          : [...prev, index].sort(),
+                      )
+                    }
+                    className={`rounded-md border px-2.5 py-1 text-[11px] uppercase tracking-[0.15em] transition-colors ${
+                      on
+                        ? "border-primary bg-primary/20 text-primary"
+                        : "border-border/60 text-muted-foreground hover:text-primary"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-3 flex flex-wrap gap-3 text-[11px] uppercase tracking-[0.15em]">
+              <button
+                type="button"
+                onClick={() => setPickedWeekdays([0, 1, 2, 3, 4, 5, 6])}
+                className="text-muted-foreground hover:text-primary"
+              >
+                Every day
+              </button>
+              <button
+                type="button"
+                onClick={() => setPickedWeekdays([1, 2, 3, 4, 5])}
+                className="text-muted-foreground hover:text-primary"
+              >
+                Weekdays
+              </button>
+              <button
+                type="button"
+                onClick={() => setPickedWeekdays([0, 6])}
+                className="text-muted-foreground hover:text-primary"
+              >
+                Weekends
+              </button>
+              <button
+                type="button"
+                onClick={() => setPickedWeekdays([])}
+                className="text-muted-foreground hover:text-primary"
+              >
+                None
+              </button>
+            </div>
+
+            <label className="mt-4 flex items-center gap-3 text-[11px] text-muted-foreground">
+              <Switch checked={fromTodayOnly} onCheckedChange={setFromTodayOnly} />
+              Skip dates already past
+            </label>
+
+            <div className="mt-4 flex flex-wrap gap-3">
+              <Button
+                size="sm"
+                onClick={() => bulkAvailability.mutate({ on: true })}
+                disabled={bulkAvailability.isPending}
+              >
+                Mark {bulkTargets.length} date{bulkTargets.length === 1 ? "" : "s"} available
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => bulkAvailability.mutate({ on: false })}
+                disabled={bulkAvailability.isPending}
+              >
+                Clear selection
+              </Button>
+            </div>
+          </div>
+
         </section>
+
+
 
 
         <section className="surface-royal rounded-lg p-5">
