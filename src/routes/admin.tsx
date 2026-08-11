@@ -293,15 +293,6 @@ function AdminPage() {
                   placeholder="Nurul Hamira"
                 />
               </div>
-              <div className="w-28 space-y-2">
-                <Label htmlFor="new-gender">Label</Label>
-                <Input
-                  id="new-gender"
-                  value={newGender}
-                  onChange={(e) => setNewGender(e.target.value)}
-                  placeholder="L / M"
-                />
-              </div>
               <Button onClick={() => addRosterName.mutate()} disabled={addRosterName.isPending}>
                 {addRosterName.isPending ? "Adding…" : "Add name"}
               </Button>
