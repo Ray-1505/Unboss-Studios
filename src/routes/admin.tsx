@@ -95,6 +95,16 @@ function AdminPage() {
     },
   });
 
+  const { data: masterAdmins } = useQuery({
+    queryKey: ["master-admins"],
+    enabled,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("master_admins").select("user_id");
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const { data: roster } = useQuery({
     queryKey: ["roster"],
     enabled,
@@ -116,6 +126,8 @@ function AdminPage() {
 
   const adminExists = (roles ?? []).some((r) => r.role === "admin");
   const isAdmin = user ? roleOf.get(user.id) === "admin" : false;
+  const masterIds = new Set((masterAdmins ?? []).map((m) => m.user_id));
+  const isMasterAdmin = user ? masterIds.has(user.id) : false;
   const registeredNames = new Set((profiles ?? []).map((p) => p.full_name));
 
   const claimAdmin = useMutation({
@@ -242,9 +254,14 @@ function AdminPage() {
             <span className="block font-display text-lg">Admin Console</span>
           </span>
         </Link>
-        <Button asChild variant="outline" size="sm">
-          <Link to="/schedule">Master calendar</Link>
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button asChild variant="outline" size="sm">
+            <Link to="/state-team">State Team</Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/schedule">Master calendar</Link>
+          </Button>
+        </div>
       </header>
 
       <div className="rule-gold my-8" />
@@ -329,6 +346,9 @@ function AdminPage() {
             <p className="mt-2 text-xs text-muted-foreground">
               Deactivated members stay in the records but are no longer offered as available
               shooters.
+              {isMasterAdmin
+                ? " As master admin, only you can promote or demote admins."
+                : " Only the master admin can promote or demote admins."}
             </p>
             <div className="rule-gold my-5" />
 
@@ -338,6 +358,7 @@ function AdminPage() {
               )}
               {(profiles ?? []).map((p) => {
                 const role = roleOf.get(p.id) ?? "shooter";
+                const isMaster = masterIds.has(p.id);
                 return (
                   <li
                     key={p.id}
@@ -347,12 +368,15 @@ function AdminPage() {
                       <p className="font-display text-sm text-primary">
                         {p.full_name || "Team member"}
                         {p.id === user.id ? " (you)" : ""}
+                        {isMaster ? " ♛" : ""}
                       </p>
                       <p className="text-[11px] text-muted-foreground">@{p.username}</p>
                       <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
                         {p.is_active ? "Active" : "Deactivated"}
                       </p>
                       <div className="mt-2 flex gap-4">
+                        {(!isMaster || isMasterAdmin) && (
+                        <>
                         <button
                           type="button"
                           onClick={() => {
@@ -373,29 +397,38 @@ function AdminPage() {
                         >
                           Reset password
                         </button>
+                        </>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
-                      <Select
-                        value={role}
-                        onValueChange={(next) =>
-                          setRole.mutate({ userId: p.id, role: next as Role })
-                        }
-                      >
-                        <SelectTrigger className="w-36">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="admin">Admin</SelectItem>
-                          <SelectItem value="shooter">Shooter</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      {isMasterAdmin && !isMaster ? (
+                        <Select
+                          value={role}
+                          onValueChange={(next) =>
+                            setRole.mutate({ userId: p.id, role: next as Role })
+                          }
+                        >
+                          <SelectTrigger className="w-36">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="admin">Admin</SelectItem>
+                            <SelectItem value="shooter">Shooter</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <span className="w-36 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                          {isMaster ? "Master admin" : role}
+                        </span>
+                      )}
                       <div className="flex items-center gap-2">
                         <span className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
                           Active
                         </span>
                         <Switch
                           checked={p.is_active}
+                          disabled={isMaster}
                           onCheckedChange={(active) =>
                             setActive.mutate({ userId: p.id, active })
                           }
