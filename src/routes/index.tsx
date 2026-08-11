@@ -62,6 +62,10 @@ function Index() {
         <Button asChild size="lg" variant="outline">
           <Link to="/schedule">View calendar</Link>
         </Button>
+        <Button asChild size="lg" variant="outline">
+          <Link to="/state-team">State Team</Link>
+        </Button>
+
       </div>
 
       <section className="mt-20 grid w-full gap-5 text-left sm:grid-cols-3">
