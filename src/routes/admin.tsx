@@ -102,7 +102,7 @@ function AdminPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("team_members")
-        .select("id, full_name, gender_label, sort_order")
+        .select("id, full_name, sort_order")
         .order("sort_order");
       if (error) throw error;
       return data;
@@ -169,7 +169,6 @@ function AdminPage() {
       const nextOrder = ((roster ?? []).at(-1)?.sort_order ?? 0) + 1;
       const { error } = await supabase.from("team_members").insert({
         full_name: name,
-        gender_label: newGender.trim(),
         sort_order: nextOrder,
       });
       if (error) throw error;
@@ -316,12 +315,7 @@ function AdminPage() {
                     key={m.id}
                     className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border/50 bg-secondary/40 px-4 py-3"
                   >
-                    <span className="text-sm">
-                      {m.full_name}
-                      {m.gender_label ? (
-                        <span className="text-muted-foreground"> ({m.gender_label})</span>
-                      ) : null}
-                    </span>
+                    <span className="text-sm">{m.full_name}</span>
                     {registered ? (
                       <span className="text-[10px] uppercase tracking-[0.2em] text-primary/80">
                         Registered
