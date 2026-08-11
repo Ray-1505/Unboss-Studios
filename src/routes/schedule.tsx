@@ -80,6 +80,10 @@ function SchedulePage() {
     jobId?: string;
   } | null>(null);
   const [form, setForm] = useState({ client: "", location: "", time: "", notes: "" });
+  const [pickedWeekdays, setPickedWeekdays] = useState<number[]>([]);
+  const [fromTodayOnly, setFromTodayOnly] = useState(true);
+
+
 
 
   useEffect(() => {
