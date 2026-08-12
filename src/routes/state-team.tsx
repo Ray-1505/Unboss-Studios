@@ -172,22 +172,6 @@ function StateTeamPage() {
                 </path>
               );
             })}
-            {WEST_MALAYSIA_STATES.map((s) => (
-              <text
-                key={`${s.code}-label`}
-                x={s.label[0]}
-                y={s.label[1]}
-                textAnchor="middle"
-                onClick={() => setActiveCode(s.code)}
-                className="pointer-events-none select-none font-display"
-                fill={s.code === activeCode ? "oklch(0.17 0.045 258)" : "oklch(0.79 0.115 84)"}
-                fillOpacity={s.code === activeCode ? 1 : 0.75}
-                fontSize={16}
-                letterSpacing="1.5"
-              >
-                {s.code}
-              </text>
-            ))}
           </svg>
         </section>
 
