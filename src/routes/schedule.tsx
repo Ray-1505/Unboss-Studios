@@ -391,6 +391,7 @@ function SchedulePage() {
               const avail = availByDate.get(date) ?? [];
               const dayJobs = jobsByDate.get(date) ?? [];
               const isSelected = date === selected;
+              const isPicked = pickedDates.includes(date);
               const status = dayStatus(date);
               const tone = !isAdmin
                 ? dayJobs.length > 0
@@ -406,11 +407,21 @@ function SchedulePage() {
                 <button
                   key={date}
                   type="button"
-                  onClick={() => setSelected(date)}
-                  className={`flex aspect-square flex-col items-center justify-center rounded-md border text-sm transition-transform hover:-translate-y-0.5 ${tone} ${
+                  onClick={() => {
+                    setSelected(date);
+                    if (selectMode) {
+                      setPickedDates((prev) =>
+                        prev.includes(date) ? prev.filter((d) => d !== date) : [...prev, date],
+                      );
+                    }
+                  }}
+                  className={`relative flex aspect-square flex-col items-center justify-center rounded-md border text-sm transition-transform hover:-translate-y-0.5 ${tone} ${
                     isSelected ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""
-                  }`}
+                  } ${isPicked ? "outline outline-2 outline-primary" : ""}`}
                 >
+                  {isPicked && (
+                    <span className="absolute right-1 top-1 text-[9px] text-primary">✓</span>
+                  )}
                   <span className="font-display">{i + 1}</span>
                   <span className="mt-1 flex items-center gap-1 text-[10px] opacity-80">
                     {avail.length > 0 && <span>{avail.length}●</span>}
