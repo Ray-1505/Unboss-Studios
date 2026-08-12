@@ -222,27 +222,16 @@ function SchedulePage() {
 
   const todayIso = iso(today.getFullYear(), today.getMonth(), today.getDate());
 
-  const bulkTargets = useMemo(() => {
-    if (pickedWeekdays.length === 0) return [] as string[];
-    const dates: string[] = [];
-    for (let d = 1; d <= daysInMonth; d += 1) {
-      const date = iso(year, month, d);
-      if (!pickedWeekdays.includes(new Date(year, month, d).getDay())) continue;
-      if (fromTodayOnly && date < todayIso) continue;
-      dates.push(date);
-    }
-    return dates;
-  }, [pickedWeekdays, daysInMonth, year, month, fromTodayOnly, todayIso]);
-
   const bulkAvailability = useMutation({
     mutationFn: async ({ on }: { on: boolean }) => {
       if (!user) throw new Error("Not signed in");
-      if (bulkTargets.length === 0) throw new Error("Pick at least one weekday first.");
+      const targets = [...pickedDates].sort();
+      if (targets.length === 0) throw new Error("Select at least one date first.");
       if (on) {
         const mine = new Set(
           (availability ?? []).filter((a) => a.user_id === user.id).map((a) => a.available_date),
         );
-        const rows = bulkTargets
+        const rows = targets
           .filter((date) => !mine.has(date))
           .map((date) => ({ user_id: user.id, available_date: date }));
         if (rows.length === 0) return 0;
@@ -254,9 +243,9 @@ function SchedulePage() {
         .from("availability")
         .delete()
         .eq("user_id", user.id)
-        .in("available_date", bulkTargets);
+        .in("available_date", targets);
       if (error) throw error;
-      return bulkTargets.length;
+      return targets.length;
     },
     onSuccess: (count, vars) => {
       queryClient.invalidateQueries({ queryKey: ["availability"] });
