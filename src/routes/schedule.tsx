@@ -686,49 +686,6 @@ function SchedulePage() {
         </section>
       </div>
 
-      <section className="mt-8">
-        <h2 className="text-lg text-gilded">Shooter Calendar</h2>
-        <div className="rule-gold my-4" />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {(profiles ?? []).map((p) => {
-            const dates = (availability ?? [])
-              .filter((a) => a.user_id === p.id)
-              .map((a) => a.available_date)
-              .sort();
-            const myJobs = (jobs ?? []).filter((j) => j.shooter_id === p.id);
-            return (
-              <article key={p.id} className="surface-royal rounded-lg p-5">
-                <h3 className="font-display text-base text-primary">
-                  {p.full_name || "Team member"}
-                </h3>
-                <p className="mt-3 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                  Available dates
-                </p>
-                <p className="mt-1 text-sm">
-                  {dates.length
-                    ? dates.map((d) => d.slice(8) + "/" + d.slice(5, 7)).join(", ")
-                    : "—"}
-                </p>
-                {(isAdmin || p.id === user.id) && (
-                  <>
-                    <p className="mt-3 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                      Total jobs ({myJobs.length})
-                    </p>
-                    <p className="mt-1 text-sm">
-                      {myJobs.length
-                        ? myJobs
-                            .map((j) => j.job_date.slice(8) + "/" + j.job_date.slice(5, 7))
-                            .join(", ")
-                        : "—"}
-                    </p>
-                  </>
-                )}
-
-              </article>
-            );
-          })}
-        </div>
-      </section>
 
       <Dialog open={Boolean(bookingFor)} onOpenChange={(open) => !open && setBookingFor(null)}>
         <DialogContent>
