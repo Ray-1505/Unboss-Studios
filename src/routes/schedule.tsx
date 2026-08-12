@@ -80,8 +80,8 @@ function SchedulePage() {
     jobId?: string;
   } | null>(null);
   const [form, setForm] = useState({ client: "", location: "", time: "", notes: "" });
-  const [pickedWeekdays, setPickedWeekdays] = useState<number[]>([]);
-  const [fromTodayOnly, setFromTodayOnly] = useState(true);
+  const [selectMode, setSelectMode] = useState(false);
+  const [pickedDates, setPickedDates] = useState<string[]>([]);
 
 
 
@@ -220,29 +220,19 @@ function SchedulePage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const todayIso = iso(today.getFullYear(), today.getMonth(), today.getDate());
 
-  const bulkTargets = useMemo(() => {
-    if (pickedWeekdays.length === 0) return [] as string[];
-    const dates: string[] = [];
-    for (let d = 1; d <= daysInMonth; d += 1) {
-      const date = iso(year, month, d);
-      if (!pickedWeekdays.includes(new Date(year, month, d).getDay())) continue;
-      if (fromTodayOnly && date < todayIso) continue;
-      dates.push(date);
-    }
-    return dates;
-  }, [pickedWeekdays, daysInMonth, year, month, fromTodayOnly, todayIso]);
+
 
   const bulkAvailability = useMutation({
     mutationFn: async ({ on }: { on: boolean }) => {
       if (!user) throw new Error("Not signed in");
-      if (bulkTargets.length === 0) throw new Error("Pick at least one weekday first.");
+      const targets = [...pickedDates].sort();
+      if (targets.length === 0) throw new Error("Select at least one date first.");
       if (on) {
         const mine = new Set(
           (availability ?? []).filter((a) => a.user_id === user.id).map((a) => a.available_date),
         );
-        const rows = bulkTargets
+        const rows = targets
           .filter((date) => !mine.has(date))
           .map((date) => ({ user_id: user.id, available_date: date }));
         if (rows.length === 0) return 0;
@@ -254,9 +244,9 @@ function SchedulePage() {
         .from("availability")
         .delete()
         .eq("user_id", user.id)
-        .in("available_date", bulkTargets);
+        .in("available_date", targets);
       if (error) throw error;
-      return bulkTargets.length;
+      return targets.length;
     },
     onSuccess: (count, vars) => {
       queryClient.invalidateQueries({ queryKey: ["availability"] });
@@ -402,6 +392,7 @@ function SchedulePage() {
               const avail = availByDate.get(date) ?? [];
               const dayJobs = jobsByDate.get(date) ?? [];
               const isSelected = date === selected;
+              const isPicked = pickedDates.includes(date);
               const status = dayStatus(date);
               const tone = !isAdmin
                 ? dayJobs.length > 0
@@ -417,11 +408,21 @@ function SchedulePage() {
                 <button
                   key={date}
                   type="button"
-                  onClick={() => setSelected(date)}
-                  className={`flex aspect-square flex-col items-center justify-center rounded-md border text-sm transition-transform hover:-translate-y-0.5 ${tone} ${
+                  onClick={() => {
+                    setSelected(date);
+                    if (selectMode) {
+                      setPickedDates((prev) =>
+                        prev.includes(date) ? prev.filter((d) => d !== date) : [...prev, date],
+                      );
+                    }
+                  }}
+                  className={`relative flex aspect-square flex-col items-center justify-center rounded-md border text-sm transition-transform hover:-translate-y-0.5 ${tone} ${
                     isSelected ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""
-                  }`}
+                  } ${isPicked ? "outline outline-2 outline-primary" : ""}`}
                 >
+                  {isPicked && (
+                    <span className="absolute right-1 top-1 text-[9px] text-primary">✓</span>
+                  )}
                   <span className="font-display">{i + 1}</span>
                   <span className="mt-1 flex items-center gap-1 text-[10px] opacity-80">
                     {avail.length > 0 && <span>{avail.length}●</span>}
@@ -457,93 +458,78 @@ function SchedulePage() {
           </p>
 
           <div className="mt-6 rounded-md border border-border/50 bg-secondary/30 p-4">
-            <h3 className="text-xs uppercase tracking-[0.25em] text-primary">
-              Bulk availability — {MONTHS[month]} {year}
-            </h3>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h3 className="text-xs uppercase tracking-[0.25em] text-primary">
+                Select dates — {MONTHS[month]} {year}
+              </h3>
+              <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                <Switch
+                  checked={selectMode}
+                  onCheckedChange={(on) => {
+                    setSelectMode(on);
+                    if (!on) setPickedDates([]);
+                  }}
+                />
+                Multi-select mode
+              </label>
+            </div>
             <p className="mt-1 text-[11px] text-muted-foreground">
-              Pick the weekdays you work, then mark the whole month at once.
+              Turn on multi-select, tap the dates you want on the calendar, then check available or
+              not available.
             </p>
 
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {DAY_LABELS.map((label, index) => {
-                const on = pickedWeekdays.includes(index);
-                return (
+            {pickedDates.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {pickedDates.map((d) => (
                   <button
-                    key={label}
+                    key={d}
                     type="button"
-                    onClick={() =>
-                      setPickedWeekdays((prev) =>
-                        prev.includes(index)
-                          ? prev.filter((d) => d !== index)
-                          : [...prev, index].sort(),
-                      )
-                    }
-                    className={`rounded-md border px-2.5 py-1 text-[11px] uppercase tracking-[0.15em] transition-colors ${
-                      on
-                        ? "border-primary bg-primary/20 text-primary"
-                        : "border-border/60 text-muted-foreground hover:text-primary"
-                    }`}
+                    onClick={() => setPickedDates((prev) => prev.filter((x) => x !== d))}
+                    className="rounded-md border border-primary/60 bg-primary/15 px-2 py-1 text-[11px] text-primary"
                   >
-                    {label}
+                    {d.slice(8)}/{d.slice(5, 7)} ✕
                   </button>
-                );
-              })}
-            </div>
+                ))}
+              </div>
+            )}
 
-            <div className="mt-3 flex flex-wrap gap-3 text-[11px] uppercase tracking-[0.15em]">
+            <div className="mt-4 space-y-2">
               <button
                 type="button"
-                onClick={() => setPickedWeekdays([0, 1, 2, 3, 4, 5, 6])}
-                className="text-muted-foreground hover:text-primary"
-              >
-                Every day
-              </button>
-              <button
-                type="button"
-                onClick={() => setPickedWeekdays([1, 2, 3, 4, 5])}
-                className="text-muted-foreground hover:text-primary"
-              >
-                Weekdays
-              </button>
-              <button
-                type="button"
-                onClick={() => setPickedWeekdays([0, 6])}
-                className="text-muted-foreground hover:text-primary"
-              >
-                Weekends
-              </button>
-              <button
-                type="button"
-                onClick={() => setPickedWeekdays([])}
-                className="text-muted-foreground hover:text-primary"
-              >
-                None
-              </button>
-            </div>
-
-            <label className="mt-4 flex items-center gap-3 text-[11px] text-muted-foreground">
-              <Switch checked={fromTodayOnly} onCheckedChange={setFromTodayOnly} />
-              Skip dates already past
-            </label>
-
-            <div className="mt-4 flex flex-wrap gap-3">
-              <Button
-                size="sm"
                 onClick={() => bulkAvailability.mutate({ on: true })}
-                disabled={bulkAvailability.isPending}
+                disabled={bulkAvailability.isPending || pickedDates.length === 0}
+                className="flex w-full items-center gap-3 rounded-md border border-border/60 p-3 text-left text-sm transition-colors hover:border-primary/70 disabled:opacity-50"
               >
-                Mark {bulkTargets.length} date{bulkTargets.length === 1 ? "" : "s"} available
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
+                <span className="flex h-4 w-4 items-center justify-center rounded-[3px] border border-primary text-[10px] text-primary">
+                  ✓
+                </span>
+                Available on {pickedDates.length} selected date
+                {pickedDates.length === 1 ? "" : "s"}
+              </button>
+              <button
+                type="button"
                 onClick={() => bulkAvailability.mutate({ on: false })}
-                disabled={bulkAvailability.isPending}
+                disabled={bulkAvailability.isPending || pickedDates.length === 0}
+                className="flex w-full items-center gap-3 rounded-md border border-border/60 p-3 text-left text-sm transition-colors hover:border-destructive/70 disabled:opacity-50"
               >
-                Clear selection
-              </Button>
+                <span className="flex h-4 w-4 items-center justify-center rounded-[3px] border border-destructive text-[10px] text-destructive">
+                  ✕
+                </span>
+                Not available on {pickedDates.length} selected date
+                {pickedDates.length === 1 ? "" : "s"}
+              </button>
+              {pickedDates.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setPickedDates([])}
+                  className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground hover:text-primary"
+                >
+                  Clear selection
+                </button>
+              )}
             </div>
           </div>
+
 
         </section>
 
@@ -686,49 +672,6 @@ function SchedulePage() {
         </section>
       </div>
 
-      <section className="mt-8">
-        <h2 className="text-lg text-gilded">Shooter Calendar</h2>
-        <div className="rule-gold my-4" />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {(profiles ?? []).map((p) => {
-            const dates = (availability ?? [])
-              .filter((a) => a.user_id === p.id)
-              .map((a) => a.available_date)
-              .sort();
-            const myJobs = (jobs ?? []).filter((j) => j.shooter_id === p.id);
-            return (
-              <article key={p.id} className="surface-royal rounded-lg p-5">
-                <h3 className="font-display text-base text-primary">
-                  {p.full_name || "Team member"}
-                </h3>
-                <p className="mt-3 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                  Available dates
-                </p>
-                <p className="mt-1 text-sm">
-                  {dates.length
-                    ? dates.map((d) => d.slice(8) + "/" + d.slice(5, 7)).join(", ")
-                    : "—"}
-                </p>
-                {(isAdmin || p.id === user.id) && (
-                  <>
-                    <p className="mt-3 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                      Total jobs ({myJobs.length})
-                    </p>
-                    <p className="mt-1 text-sm">
-                      {myJobs.length
-                        ? myJobs
-                            .map((j) => j.job_date.slice(8) + "/" + j.job_date.slice(5, 7))
-                            .join(", ")
-                        : "—"}
-                    </p>
-                  </>
-                )}
-
-              </article>
-            );
-          })}
-        </div>
-      </section>
 
       <Dialog open={Boolean(bookingFor)} onOpenChange={(open) => !open && setBookingFor(null)}>
         <DialogContent>
