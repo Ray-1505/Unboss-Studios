@@ -220,7 +220,8 @@ function SchedulePage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const todayIso = iso(today.getFullYear(), today.getMonth(), today.getDate());
+
+
 
   const bulkAvailability = useMutation({
     mutationFn: async ({ on }: { on: boolean }) => {
