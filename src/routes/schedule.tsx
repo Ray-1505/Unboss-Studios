@@ -457,93 +457,78 @@ function SchedulePage() {
           </p>
 
           <div className="mt-6 rounded-md border border-border/50 bg-secondary/30 p-4">
-            <h3 className="text-xs uppercase tracking-[0.25em] text-primary">
-              Bulk availability — {MONTHS[month]} {year}
-            </h3>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h3 className="text-xs uppercase tracking-[0.25em] text-primary">
+                Select dates — {MONTHS[month]} {year}
+              </h3>
+              <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                <Switch
+                  checked={selectMode}
+                  onCheckedChange={(on) => {
+                    setSelectMode(on);
+                    if (!on) setPickedDates([]);
+                  }}
+                />
+                Multi-select mode
+              </label>
+            </div>
             <p className="mt-1 text-[11px] text-muted-foreground">
-              Pick the weekdays you work, then mark the whole month at once.
+              Turn on multi-select, tap the dates you want on the calendar, then check available or
+              not available.
             </p>
 
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {DAY_LABELS.map((label, index) => {
-                const on = pickedWeekdays.includes(index);
-                return (
+            {pickedDates.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {pickedDates.map((d) => (
                   <button
-                    key={label}
+                    key={d}
                     type="button"
-                    onClick={() =>
-                      setPickedWeekdays((prev) =>
-                        prev.includes(index)
-                          ? prev.filter((d) => d !== index)
-                          : [...prev, index].sort(),
-                      )
-                    }
-                    className={`rounded-md border px-2.5 py-1 text-[11px] uppercase tracking-[0.15em] transition-colors ${
-                      on
-                        ? "border-primary bg-primary/20 text-primary"
-                        : "border-border/60 text-muted-foreground hover:text-primary"
-                    }`}
+                    onClick={() => setPickedDates((prev) => prev.filter((x) => x !== d))}
+                    className="rounded-md border border-primary/60 bg-primary/15 px-2 py-1 text-[11px] text-primary"
                   >
-                    {label}
+                    {d.slice(8)}/{d.slice(5, 7)} ✕
                   </button>
-                );
-              })}
-            </div>
+                ))}
+              </div>
+            )}
 
-            <div className="mt-3 flex flex-wrap gap-3 text-[11px] uppercase tracking-[0.15em]">
+            <div className="mt-4 space-y-2">
               <button
                 type="button"
-                onClick={() => setPickedWeekdays([0, 1, 2, 3, 4, 5, 6])}
-                className="text-muted-foreground hover:text-primary"
-              >
-                Every day
-              </button>
-              <button
-                type="button"
-                onClick={() => setPickedWeekdays([1, 2, 3, 4, 5])}
-                className="text-muted-foreground hover:text-primary"
-              >
-                Weekdays
-              </button>
-              <button
-                type="button"
-                onClick={() => setPickedWeekdays([0, 6])}
-                className="text-muted-foreground hover:text-primary"
-              >
-                Weekends
-              </button>
-              <button
-                type="button"
-                onClick={() => setPickedWeekdays([])}
-                className="text-muted-foreground hover:text-primary"
-              >
-                None
-              </button>
-            </div>
-
-            <label className="mt-4 flex items-center gap-3 text-[11px] text-muted-foreground">
-              <Switch checked={fromTodayOnly} onCheckedChange={setFromTodayOnly} />
-              Skip dates already past
-            </label>
-
-            <div className="mt-4 flex flex-wrap gap-3">
-              <Button
-                size="sm"
                 onClick={() => bulkAvailability.mutate({ on: true })}
-                disabled={bulkAvailability.isPending}
+                disabled={bulkAvailability.isPending || pickedDates.length === 0}
+                className="flex w-full items-center gap-3 rounded-md border border-border/60 p-3 text-left text-sm transition-colors hover:border-primary/70 disabled:opacity-50"
               >
-                Mark {bulkTargets.length} date{bulkTargets.length === 1 ? "" : "s"} available
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
+                <span className="flex h-4 w-4 items-center justify-center rounded-[3px] border border-primary text-[10px] text-primary">
+                  ✓
+                </span>
+                Available on {pickedDates.length} selected date
+                {pickedDates.length === 1 ? "" : "s"}
+              </button>
+              <button
+                type="button"
                 onClick={() => bulkAvailability.mutate({ on: false })}
-                disabled={bulkAvailability.isPending}
+                disabled={bulkAvailability.isPending || pickedDates.length === 0}
+                className="flex w-full items-center gap-3 rounded-md border border-border/60 p-3 text-left text-sm transition-colors hover:border-destructive/70 disabled:opacity-50"
               >
-                Clear selection
-              </Button>
+                <span className="flex h-4 w-4 items-center justify-center rounded-[3px] border border-destructive text-[10px] text-destructive">
+                  ✕
+                </span>
+                Not available on {pickedDates.length} selected date
+                {pickedDates.length === 1 ? "" : "s"}
+              </button>
+              {pickedDates.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setPickedDates([])}
+                  className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground hover:text-primary"
+                >
+                  Clear selection
+                </button>
+              )}
             </div>
           </div>
+
 
         </section>
 
