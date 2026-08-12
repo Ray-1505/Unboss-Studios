@@ -1,0 +1,1 @@
+UPDATE public.state_leaders SET state_name = 'Selangor/Kuala Lumpur' WHERE state_code = 'SGR'; DELETE FROM public.state_leaders WHERE state_code IN ('KUL', 'PJY');
