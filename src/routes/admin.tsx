@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { PasswordInput } from "@/components/PasswordInput";
-import { adminResetPassword, adminSetUsername } from "@/lib/admin.functions";
+import { adminDeleteUser, adminResetPassword, adminSetUsername } from "@/lib/admin.functions";
 import { validateUsername } from "@/lib/username";
 import {
   Dialog,
@@ -56,6 +56,7 @@ function AdminPage() {
   const { user, loading } = useAuth();
   const setUsernameFn = useServerFn(adminSetUsername);
   const resetPasswordFn = useServerFn(adminResetPassword);
+  const deleteUserFn = useServerFn(adminDeleteUser);
 
   const [newName, setNewName] = useState("");
   const [usernameDialog, setUsernameDialog] = useState<{ id: string; current: string } | null>(
@@ -64,6 +65,7 @@ function AdminPage() {
   const [usernameDraft, setUsernameDraft] = useState("");
   const [passwordDialog, setPasswordDialog] = useState<{ id: string; name: string } | null>(null);
   const [passwordDraft, setPasswordDraft] = useState("");
+  const [deleteDialog, setDeleteDialog] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth", replace: true });
@@ -234,6 +236,21 @@ function AdminPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const deleteUser = useMutation({
+    mutationFn: async (userId: string) => {
+      await deleteUserFn({ data: { userId } });
+    },
+    onSuccess: () => {
+      setDeleteDialog(null);
+      queryClient.invalidateQueries({ queryKey: ["admin-profiles"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-roles"] });
+      queryClient.invalidateQueries({ queryKey: ["profiles"] });
+      queryClient.invalidateQueries({ queryKey: ["roster"] });
+      toast.success("Registered user deleted");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   if (loading || !user) {
     return (
       <main className="flex min-h-screen items-center justify-center">
@@ -396,6 +413,17 @@ function AdminPage() {
                         >
                           Reset password
                         </button>
+                        {!isMaster && p.id !== user.id && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setDeleteDialog({ id: p.id, name: p.full_name || p.username })
+                            }
+                            className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground hover:text-destructive"
+                          >
+                            Delete user
+                          </button>
+                        )}
                         </>
                         )}
                       </div>
@@ -495,6 +523,29 @@ function AdminPage() {
           <DialogFooter>
             <Button onClick={() => resetPassword.mutate()} disabled={resetPassword.isPending}>
               {resetPassword.isPending ? "Resetting…" : "Reset password"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={Boolean(deleteDialog)} onOpenChange={(open) => !open && setDeleteDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-display">Delete {deleteDialog?.name}?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            This permanently removes the account, its availability and its jobs. This cannot be
+            undone.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialog(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => deleteDialog && deleteUser.mutate(deleteDialog.id)}
+              disabled={deleteUser.isPending}
+            >
+              {deleteUser.isPending ? "Deleting…" : "Delete permanently"}
             </Button>
           </DialogFooter>
         </DialogContent>
