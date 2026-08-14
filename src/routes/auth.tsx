@@ -146,7 +146,6 @@ function AuthPage() {
               required
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="amirul"
             />
           </div>
           <div className="space-y-2">
@@ -157,7 +156,6 @@ function AuthPage() {
               minLength={6}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
             />
           </div>
           <Button type="submit" className="w-full" disabled={busy}>

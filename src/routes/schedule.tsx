@@ -689,7 +689,6 @@ function SchedulePage() {
                 id="client"
                 value={form.client}
                 onChange={(e) => setForm({ ...form, client: e.target.value })}
-                placeholder="Baju U.B Production"
               />
             </div>
             <div className="space-y-2">
@@ -698,7 +697,6 @@ function SchedulePage() {
                 id="location"
                 value={form.location}
                 onChange={(e) => setForm({ ...form, location: e.target.value })}
-                placeholder="Sik / Baling"
               />
             </div>
             <div className="space-y-2">
@@ -707,7 +705,6 @@ function SchedulePage() {
                 id="time"
                 value={form.time}
                 onChange={(e) => setForm({ ...form, time: e.target.value })}
-                placeholder="2:30 pm"
               />
             </div>
             <div className="space-y-2">
@@ -716,7 +713,6 @@ function SchedulePage() {
                 id="notes"
                 value={form.notes}
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                placeholder="Gear, contact person, extras"
               />
             </div>
           </div>
