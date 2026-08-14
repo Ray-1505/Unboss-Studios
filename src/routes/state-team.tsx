@@ -242,7 +242,6 @@ function StateTeamPage() {
                 id="leader"
                 value={draft.leader}
                 onChange={(e) => setDraft({ ...draft, leader: e.target.value })}
-                placeholder="Muhd Amirul Hakim"
               />
             </div>
             <div className="space-y-2">
@@ -251,7 +250,6 @@ function StateTeamPage() {
                 id="phone"
                 value={draft.phone}
                 onChange={(e) => setDraft({ ...draft, phone: e.target.value })}
-                placeholder="012-345 6789"
               />
             </div>
           </div>

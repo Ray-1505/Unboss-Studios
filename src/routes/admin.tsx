@@ -305,7 +305,6 @@ function AdminPage() {
                   id="new-name"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  placeholder="Nurul Hamira"
                 />
               </div>
               <Button onClick={() => addRosterName.mutate()} disabled={addRosterName.isPending}>
@@ -488,7 +487,6 @@ function AdminPage() {
               minLength={6}
               value={passwordDraft}
               onChange={(e) => setPasswordDraft(e.target.value)}
-              placeholder="••••••••"
             />
             <p className="text-[11px] text-muted-foreground">
               Share this password with the member so they can sign in and change it later.
