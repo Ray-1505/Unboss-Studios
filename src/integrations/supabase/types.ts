@@ -195,6 +195,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_delete_user: { Args: { _user_id: string }; Returns: boolean }
       claim_admin: { Args: never; Returns: boolean }
       has_role: {
         Args: {
