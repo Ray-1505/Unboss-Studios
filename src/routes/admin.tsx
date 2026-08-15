@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { PasswordInput } from "@/components/PasswordInput";
-import { adminDeleteUser, adminResetPassword, adminSetUsername } from "@/lib/admin.functions";
+import { adminResetPassword, adminSetUsername } from "@/lib/admin.functions";
 import { validateUsername } from "@/lib/username";
 import {
   Dialog,
@@ -56,7 +56,6 @@ function AdminPage() {
   const { user, loading } = useAuth();
   const setUsernameFn = useServerFn(adminSetUsername);
   const resetPasswordFn = useServerFn(adminResetPassword);
-  const deleteUserFn = useServerFn(adminDeleteUser);
 
   const [newName, setNewName] = useState("");
   const [usernameDialog, setUsernameDialog] = useState<{ id: string; current: string } | null>(
