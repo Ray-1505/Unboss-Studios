@@ -430,22 +430,28 @@ function AdminPage() {
                     </div>
                     <div className="flex items-center gap-4">
                       {isMasterAdmin && !isMaster ? (
-                        <Select
-                          value={role}
-                          onValueChange={(next) =>
-                            setRole.mutate({ userId: p.id, role: next as Role })
-                          }
-                        >
-                          <SelectTrigger className="w-36">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="admin">Admin</SelectItem>
-                            <SelectItem value="shooter">Shooter</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <div className="w-40 space-y-1">
+                          <span className="block text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                            Appoint role
+                          </span>
+                          <Select
+                            value={role}
+                            disabled={setRole.isPending}
+                            onValueChange={(next) =>
+                              setRole.mutate({ userId: p.id, role: next as Role })
+                            }
+                          >
+                            <SelectTrigger className="w-40">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="admin">Admin</SelectItem>
+                              <SelectItem value="shooter">Shooter</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                       ) : (
-                        <span className="w-36 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                        <span className="w-40 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
                           {isMaster ? "Master admin" : role}
                         </span>
                       )}
