@@ -1,15 +1,13 @@
-import { createServerFn } from "@tanstack/react-start";
+import { supabase } from "@/integrations/supabase/client";
+
+export type RosterName = { id: string; full_name: string };
 
 /**
- * Public roster names used only to populate the registration name picker.
- * The table itself is no longer readable by unauthenticated clients.
+ * Roster names used only to populate the registration name picker.
+ * Served by a database function so it works without an authenticated session.
  */
-export const getPublicRoster = createServerFn({ method: "GET" }).handler(async () => {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data, error } = await supabaseAdmin
-    .from("team_members")
-    .select("id, full_name")
-    .order("sort_order");
+export async function getPublicRoster(): Promise<RosterName[]> {
+  const { data, error } = await supabase.rpc("registration_roster");
   if (error) throw new Error(error.message);
-  return data ?? [];
-});
+  return (data ?? []) as RosterName[];
+}
