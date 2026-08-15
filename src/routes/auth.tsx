@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -10,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/PasswordInput";
 import { Label } from "@/components/ui/label";
 import { usernameToEmail, validateUsername } from "@/lib/username";
+import { getPublicRoster } from "@/lib/roster.functions";
 import {
   Select,
   SelectContent,
@@ -47,16 +49,10 @@ function AuthPage() {
   const [fullName, setFullName] = useState("");
   const [busy, setBusy] = useState(false);
 
+  const fetchRoster = useServerFn(getPublicRoster);
   const { data: roster } = useQuery({
-    queryKey: ["roster"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("team_members")
-        .select("id, full_name")
-        .order("sort_order");
-      if (error) throw error;
-      return data;
-    },
+    queryKey: ["public-roster"],
+    queryFn: () => fetchRoster(),
   });
 
   useEffect(() => {
