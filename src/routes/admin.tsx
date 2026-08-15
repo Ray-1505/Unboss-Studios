@@ -238,7 +238,8 @@ function AdminPage() {
 
   const deleteUser = useMutation({
     mutationFn: async (userId: string) => {
-      await deleteUserFn({ data: { userId } });
+      const { error } = await supabase.rpc("admin_delete_user", { _user_id: userId });
+      if (error) throw new Error(error.message);
     },
     onSuccess: () => {
       setDeleteDialog(null);
