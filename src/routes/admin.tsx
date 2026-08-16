@@ -146,10 +146,11 @@ function AdminPage() {
 
   const setRole = useMutation({
     mutationFn: async ({ userId, role }: { userId: string; role: Role }) => {
-      const { error: delErr } = await supabase.from("user_roles").delete().eq("user_id", userId);
-      if (delErr) throw delErr;
-      const { error } = await supabase.from("user_roles").insert({ user_id: userId, role });
-      if (error) throw error;
+      const { error } = await supabase.rpc("admin_set_role", {
+        _user_id: userId,
+        _role: role,
+      });
+      if (error) throw new Error(error.message);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-roles"] });
