@@ -29,7 +29,7 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 function createSupabaseClient() {
   // HARDCODED KEYS TO BYPASS VERCEL ENV ISSUES
   const SUPABASE_URL = "https://lctqacndwajniwgzykhe.supabase.co";
-  const SUPABASE_PUBLISHABLE_KEY = "PASTE_YOUR_LONG_SB_PUBLISHABLE_KEY_HERE";
+  const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_yNzvdktb2OHucD4kBup4PA_crUko9Uq";
 
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
     const missing = [
